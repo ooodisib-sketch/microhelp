@@ -6,38 +6,34 @@
     <title>MicroHelp PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; }
+        :root { --p: #007AFF; --bg: #F2F2F7; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
         .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .container { padding: 15px; max-width: 500px; margin: 0 auto; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; background: var(--p); color: white; }
         input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #DDD; box-sizing: border-box; }
-        .nav-tabs { display: flex; background: #E5E5EA; border-radius: 12px; padding: 2px; margin-bottom: 15px; }
-        .tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 10px; }
-        .tab.active { background: white; }
     </style>
 </head>
 <body>
 
 <div id="app">
     <div id="scr-auth" class="container" style="text-align: center; padding-top: 100px;">
-        <h1 style="color: var(--p); font-size: 40px;">MicroHelp</h1>
+        <h1 style="color: var(--p); font-size: 40px; margin-bottom: 0;">MicroHelp</h1>
+        <p style="opacity: 0.6; margin-bottom: 30px;">Помощь в реальном времени</p>
         <button class="btn" onclick="startApp('client')">🙋‍♂️ Я Заказчик</button>
-        <button class="btn" style="background:#8E8E93; margin-top:10px" onclick="startApp('worker')">🛠 Я Помощник</button>
+        <button class="btn" style="background:#8E8E93; margin-top:12px" onclick="startApp('worker')">🛠 Я Помощник</button>
     </div>
 
     <div id="scr-main" style="display:none">
-        <div class="header"><b>MicroHelp PRO</b> <span id="user-role" style="font-size:10px; opacity:0.5"></span></div>
+        <div class="header"><b>MicroHelp PRO</b> <span id="user-role-tag" style="font-size:10px; opacity:0.5; text-transform:uppercase"></span></div>
         <div class="container">
             <div id="client-ui" style="display:none" class="card">
-                <h3>Новый заказ</h3>
-                <input id="title" placeholder="Что сделать?">
+                <h3 style="margin-top:0">Новый заказ</h3>
+                <input id="title" placeholder="Что нужно сделать?">
                 <input id="price" type="number" placeholder="Бюджет ₽">
                 <button class="btn" onclick="createTask()">Опубликовать</button>
             </div>
@@ -47,52 +43,68 @@
 </div>
 
 <script>
+    // ТВОИ НОВЫЕ КЛЮЧИ (СВЕЖИЕ)
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co'; 
-const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-
-const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
+    const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
     
-    // Инициализация БЕЗ зависания
+    // Инициализация
     const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
     let userRole = '';
     let userId = 'u' + Math.floor(Math.random() * 10000);
 
-    function startApp(role) {
+    // ГЛАВНАЯ ФУНКЦИЯ ЗАПУСКА
+    async function startApp(role) {
+        console.log("Запуск приложения как:", role);
         userRole = role;
+        
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('scr-main').style.display = 'block';
-        document.getElementById('user-role').innerText = role;
-        if(role === 'client') document.getElementById('client-ui').style.display = 'block';
+        document.getElementById('user-role-tag').innerText = role;
+        
+        if(role === 'client') {
+            document.getElementById('client-ui').style.display = 'block';
+        }
         
         loadTasks();
         
-        // Подписка на обновления
-        _supabase.channel('tasks-db').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-            loadTasks();
-        }).subscribe();
+        // Включаем слежение за изменениями в реальном времени
+        _supabase.channel('custom-all-channel')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+              console.log("База обновилась, перегружаем список...");
+              loadTasks();
+          })
+          .subscribe();
     }
 
     async function loadTasks() {
-        console.log("Загрузка данных...");
-        const { data, error } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        const { data, error } = await _supabase
+            .from('tasks')
+            .select('*')
+            .order('created_at', { ascending: false });
         
         if (error) {
-            console.error("Ошибка Supabase:", error.message);
+            console.error("Ошибка при загрузке:", error.message);
             return;
         }
 
         const feed = document.getElementById('feed');
-        feed.innerHTML = '';
+        feed.innerHTML = '<h4>Лента заказов:</h4>';
         
         data.forEach(t => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.innerHTML = `<b>${t.title}</b><br><span style="color:#007AFF">${t.price} ₽</span><br><small>Статус: ${t.status}</small>`;
+            card.innerHTML = `
+                <div style="float:right; font-size:10px; font-weight:bold; color:orange">${t.status}</div>
+                <b>${t.title}</b><br>
+                <span style="color:var(--p); font-weight:800">${t.price} ₽</span>
+            `;
             
             if(userRole === 'worker' && t.status === 'searching') {
                 const btn = document.createElement('button');
-                btn.className = 'btn'; btn.style.marginTop = '10px'; btn.innerText = 'Взять заказ';
+                btn.className = 'btn';
+                btn.style.marginTop = '10px';
+                btn.innerText = 'Взять заказ';
                 btn.onclick = () => takeTask(t.id);
                 card.appendChild(btn);
             }
@@ -103,9 +115,8 @@ const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
     async function createTask() {
         const t = document.getElementById('title').value;
         const p = document.getElementById('price').value;
-        if(!t || !p) return alert("Заполни поля!");
+        if(!t || !p) return alert("Заполни все поля!");
 
-        console.log("Отправка заказа...");
         const { error } = await _supabase.from('tasks').insert([{ 
             title: t, 
             price: parseInt(p), 
@@ -114,18 +125,23 @@ const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
         }]);
 
         if(error) {
-            alert("Ошибка при создании: " + error.message);
+            alert("Ошибка: " + error.message);
         } else {
             document.getElementById('title').value = '';
             document.getElementById('price').value = '';
+            // Список обновится автоматически через Realtime
         }
     }
 
     async function takeTask(id) {
-        await _supabase.from('tasks').update({ status: 'active', worker_id: userId }).eq('id', id);
-        alert("Заказ взят!");
+        const { error } = await _supabase
+            .from('tasks')
+            .update({ status: 'active', worker_id: userId })
+            .eq('id', id);
+            
+        if(error) alert("Ошибка: " + error.message);
+        else alert("Вы взяли заказ в работу!");
     }
 </script>
 </body>
 </html>
-
