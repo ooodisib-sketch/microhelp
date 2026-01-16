@@ -1,225 +1,66 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MicroHelp Real-Time</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; }
-        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE; }
-        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
-        .btn-main { background: var(--p); color: white; }
-        .btn-ghost { background: #E5E5EA; color: var(--text); }
-        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #DDD; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
-        
-        /* Чат */
-        #chat-view { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
-        .chat-header { padding: 20px; border-bottom: 1px solid #EEE; font-weight: 800; display: flex; align-items: center; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F8F9FB; }
-        .msg { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 14px; }
-        .msg.sent { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .msg.received { align-self: flex-start; background: #E5E5EA; border-bottom-left-radius: 4px; }
-        
-        .screen { display: none; }
-        .active { display: block; }
-        .status-badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; float: right; }
-        .status-searching { background: #E5F1FF; color: var(--p); }
-        .status-active { background: #FFF4E5; color: orange; }
-    </style>
-</head>
-<body>
-
-<div id="screen-auth" class="screen active">
-    <div class="container" style="text-align: center; margin-top: 100px;">
-        <h1 style="font-weight: 900; color: var(--p);">MicroHelp</h1>
-        <button class="btn btn-main" onclick="selectRole('client')">🙋‍♂️ Я Заказчик</button>
-        <button class="btn btn-ghost" onclick="selectRole('worker')">🛠 Я Помощник</button>
-        <p style="font-size: 12px; opacity: 0.5; margin-top: 20px;">Режим Real-Time включен</p>
-    </div>
-</div>
-
-<div id="screen-app" class="screen">
-    <header style="background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
-        <b id="user-display">Загрузка...</b>
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--p)">Выйти</button>
-    </header>
-
-    <div class="container">
-        <div id="ui-client" style="display:none">
-            <div class="card">
-                <h3>Новая задача</h3>
-                <input id="t-title" placeholder="Что нужно сделать?">
-                <input id="t-price" type="number" placeholder="Бюджет (₽)">
-                <button class="btn btn-main" onclick="createTask()">Опубликовать</button>
-            </div>
-            <h4>Мои заказы</h4>
-            <div id="client-list"></div>
-        </div>
-
-        <div id="ui-worker" style="display:none">
-            <h3>Лента заказов</h3>
-            <div id="worker-feed"></div>
-        </div>
-    </div>
-</div>
-
-<div id="chat-view">
-    <div class="chat-header">
-        <span onclick="closeChat()" style="cursor:pointer; margin-right: 15px;">←</span>
-        <span id="chat-title">Чат</span>
-    </div>
-    <div class="chat-messages" id="chat-msgs"></div>
-    <div style="padding: 15px; display: flex; gap: 10px; background: white;">
-        <input id="chat-in" placeholder="Сообщение..." style="margin:0">
-        <button class="btn btn-main" style="width: auto; margin:0" onclick="sendMsg()">➤</button>
-    </div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-    // 1. КОНФИГУРАЦИЯ (Вставь свои данные!)
-    const firebaseConfig = {
-        apiKey: "AIzaSyBgNLqexeJE0hPOcW2EExSnL4QHMX6hVvI",
-        authDomain: "microhelp-953ca.firebaseapp.com",
-        projectId: "microhelp-953ca",
-        storageBucket: "microhelp-953ca.firebasestorage.app",
-        messagingSenderId: "966336795289",
-        appId: "1:966336795289:web:c5563125d06af5b0dcde08"
-    };
+    // 1. Настройки (Возьми их в Supabase: Settings -> API)
+    const SUPABASE_URL = 'ТВОЙ_URL';
+    const SUPABASE_KEY = 'ТВОЙ_ANON_KEY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    
-    let userRole = '';
     let userId = 'user_' + Math.floor(Math.random() * 10000);
-    let activeChatId = null;
-    let firstLoad = true;
+    let userRole = '';
 
-    // 2. ЗВУКОВЫЕ УВЕДОМЛЕНИЯ (Web Audio API)
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(type) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        if(type === 'new_task') { // Высокий двойной пик
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
-        } else { // Мягкий звук сообщения
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
-        }
-        
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
-    }
-
-    // 3. ЛОГИКА ОНЛАЙН ОБНОВЛЕНИЯ
     function selectRole(role) {
         userRole = role;
-        document.getElementById('screen-auth').classList.remove('active');
-        document.getElementById('screen-app').classList.add('active');
-        document.getElementById('user-display').innerText = role === 'client' ? '🙋‍♂️ Заказчик' : '🛠 Помощник';
-        document.getElementById(role === 'client' ? 'ui-client' : 'ui-worker').style.display = 'block';
-        
-        startListening();
+        document.getElementById('screen-auth').style.display = 'none';
+        document.getElementById('screen-app').style.display = 'block';
+        startRealtime();
+        renderTasks(); // Первичная загрузка
     }
 
-    function startListening() {
-        // Слушаем ВСЕ заказы в реальном времени
-        db.collection("tasks").orderBy("createdAt", "desc").onSnapshot(snapshot => {
-            const cList = document.getElementById('client-list');
-            const wFeed = document.getElementById('worker-feed');
+    // 2. Реальное время (Real-time)
+    function startRealtime() {
+        supabase.channel('custom-all-channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+                console.log('Изменение в базе!', payload);
+                renderTasks();
+                if(payload.eventType === 'INSERT' && userRole === 'worker') playSound('new_task');
+            })
+            .subscribe();
+    }
+
+    // 3. Функция загрузки заказов
+    async function renderTasks() {
+        const { data: tasks, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        if (error) return console.error(error);
+
+        const cList = document.getElementById('client-list');
+        const wFeed = document.getElementById('worker-feed');
+        cList.innerHTML = ''; wFeed.innerHTML = '';
+
+        tasks.forEach(t => {
+            const card = `
+                <div class="card">
+                    <span class="status-badge">${t.status}</span>
+                    <b>${t.title}</b><br>${t.price} ₽
+                    ${userRole === 'client' && t.status === 'searching' ? `<button onclick="alert('Ждем исполнителя')">В поиске...</button>` : ''}
+                    ${userRole === 'worker' && t.status === 'searching' ? `<button class="btn btn-main" onclick="apply('${t.id}')">Откликнуться</button>` : ''}
+                </div>`;
             
-            // Если добавился новый документ и это не первая загрузка — играем звук
-            if (!firstLoad && snapshot.docChanges().some(change => change.type === "added")) {
-                if (userRole === 'worker') playSound('new_task');
-            }
-            firstLoad = false;
-
-            cList.innerHTML = '';
-            wFeed.innerHTML = '';
-
-            snapshot.forEach(doc => {
-                const t = doc.data();
-                const id = doc.id;
-                const card = `
-                    <div class="card">
-                        <span class="status-badge status-${t.status}">${t.status}</span>
-                        <b>${t.title}</b><br>${t.price} ₽
-                        ${userRole === 'client' && t.status === 'searching' ? `<button class="btn btn-main" onclick="takeOrder('${id}')">Принять отклик</button>` : ''}
-                        ${userRole === 'worker' && t.status === 'searching' ? `<button class="btn btn-main" onclick="apply('${id}')">Откликнуться</button>` : ''}
-                        ${t.status === 'active' ? `<button class="btn btn-ghost" onclick="openChat('${id}')">Открыть Чат</button>` : ''}
-                    </div>`;
-
-                if (t.clientId === userId) cList.innerHTML += card;
-                if (t.status === 'searching') wFeed.innerHTML += card;
-                else if (t.workerId === userId || t.clientId === userId) {
-                    if(userRole === 'worker') wFeed.innerHTML += card;
-                }
-            });
+            if (t.client_id === userId) cList.innerHTML += card;
+            if (t.status === 'searching') wFeed.innerHTML += card;
         });
     }
 
+    // 4. Создание задачи
     async function createTask() {
         const title = document.getElementById('t-title').value;
         const price = document.getElementById('t-price').value;
-        await db.collection("tasks").add({
-            title, price, status: 'searching', clientId: userId, createdAt: Date.now(), messages: []
-        });
+        await supabase.from('tasks').insert([{ title, price, client_id: userId, status: 'searching' }]);
         document.getElementById('t-title').value = '';
     }
 
     async function apply(id) {
-        await db.collection("tasks").doc(id).update({ status: 'active', workerId: userId });
-        playSound('msg');
+        await supabase.from('tasks').update({ status: 'active', worker_id: userId }).eq('id', id);
+        alert("Вы взяли заказ!");
     }
-
-    // 4. ОНЛАЙН ЧАТ
-    function openChat(id) {
-        activeChatId = id;
-        document.getElementById('chat-view').style.display = 'flex';
-        
-        // Слушаем сообщения в этом конкретном заказе
-        db.collection("tasks").doc(id).onSnapshot(doc => {
-            const data = doc.data();
-            const box = document.getElementById('chat-msgs');
-            const oldMsgCount = box.children.length;
-            
-            box.innerHTML = (data.messages || []).map(m => `
-                <div class="msg ${m.sender === userId ? 'sent' : 'received'}">${m.text}</div>
-            `).join('');
-            
-            box.scrollTop = box.scrollHeight;
-
-            // Звук сообщения, если их стало больше
-            if (data.messages && data.messages.length > oldMsgCount) {
-                if (data.messages[data.messages.length-1].sender !== userId) playSound('msg');
-            }
-        });
-    }
-
-    async function sendMsg() {
-        const text = document.getElementById('chat-in').value;
-        if (!text) return;
-        const ref = db.collection("tasks").doc(activeChatId);
-        const doc = await ref.get();
-        const msgs = doc.data().messages || [];
-        msgs.push({ text, sender: userId, time: Date.now() });
-        await ref.update({ messages: msgs });
-        document.getElementById('chat-in').value = '';
-    }
-
-    function closeChat() { document.getElementById('chat-view').style.display = 'none'; }
 </script>
-</body>
-</html>
