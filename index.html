@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>МикроПомощь | Гиперлокальный сервис</title>
+    <title>МикроПомощь PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -11,400 +11,434 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { 
-            --primary: #007AFF; 
-            --bg: #F2F2F7; 
-            --surface: #FFFFFF; 
-            --text-main: #1C1C1E; 
-            --text-sec: #8E8E93;
-            --green: #34C759; 
-            --orange: #FF9500;
-            --danger: #FF3B30;
-        }
+        :root { --primary: #007AFF; --bg: #F2F2F7; --surface: #FFFFFF; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); -webkit-tap-highlight-color: transparent; padding-bottom: 80px; }
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text-main); -webkit-tap-highlight-color: transparent; padding-bottom: 80px; }
-        
-        /* UI КОМПОНЕНТЫ */
-        .header { background: var(--surface); padding: 15px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 0 rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-weight: 900; font-size: 20px; color: var(--primary); letter-spacing: -0.5px; }
-        
+        .header { background: var(--surface); padding: 15px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 0 rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
         .container { padding: 15px; max-width: 600px; margin: 0 auto; }
         
-        .card { background: var(--surface); border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.03); }
-        .card:active { transform: scale(0.98); }
-        
-        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-size: 15px; margin-top: 10px; transition: 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-success { background: var(--green); color: white; }
-        
-        input, select, textarea { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #E5E5EA; background: #F9F9F9; box-sizing: border-box; font-family: inherit; font-size: 16px; }
-        
-        /* КАТЕГОРИИ */
-        .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-        .cat-item { background: white; border-radius: 12px; padding: 10px 5px; text-align: center; border: 1px solid #EEE; cursor: pointer; }
-        .cat-item.selected { border-color: var(--primary); background: #E5F1FF; color: var(--primary); }
-        .cat-icon { font-size: 24px; display: block; margin-bottom: 5px; }
-        .cat-name { font-size: 10px; font-weight: 700; }
+        .card { background: var(--surface); border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative; }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
+        .btn:active { transform: scale(0.97); }
+        .btn-p { background: var(--primary); color: white; }
+        .btn-g { background: var(--green); color: white; }
+        .btn-o { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
 
-        /* МЕНЮ И КАРТА */
-        .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #EEE; z-index: 999; }
-        .nav-item { text-align: center; font-size: 10px; color: var(--text-sec); font-weight: 600; cursor: pointer; }
+        /* UI ЭЛЕМЕНТЫ */
+        .badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; font-weight: 800; text-transform: uppercase; float: right; }
+        .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; padding: 10px; border-top: 1px solid #EEE; z-index: 999; }
+        .nav-item { text-align: center; font-size: 10px; color: #8E8E93; font-weight: 600; cursor: pointer; flex: 1; }
         .nav-item.active { color: var(--primary); }
-        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        .nav-icon { font-size: 22px; display: block; margin-bottom: 2px; }
         
-        #map { height: 350px; width: 100%; border-radius: 20px; margin-bottom: 20px; z-index: 1; }
+        input, textarea { width: 100%; padding: 14px; margin-bottom: 10px; border-radius: 12px; border: 1px solid #E5E5EA; background: #F9F9F9; box-sizing: border-box; font-family: inherit; }
+        
+        /* УВЕДОМЛЕНИЕ */
+        #notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 20px; border-radius: 30px; z-index: 3000; display: none; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); width: 80%; text-align: center; }
+
+        /* МОДАЛКА ОТЗЫВА */
+        #review-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2500; display: none; align-items: center; justify-content: center; }
+        .star { font-size: 30px; color: #DDD; cursor: pointer; transition: 0.2s; }
+        .star.active { color: var(--orange); }
+
+        /* КАРТА */
+        #map { height: 70vh; width: 100%; }
         
         /* ЧАТ */
         #chat-ui { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
-        .chat-header { padding: 15px; border-bottom: 1px solid #EEE; display: flex; align-items: center; gap: 15px; font-weight: 700; }
-        .chat-msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F2F2F7; }
-        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.4; }
-        .msg-me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
-        .msg-other { align-self: flex-start; background: white; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-
-        /* СТАТУСЫ И ЦЕНЫ */
-        .price-tag { font-size: 18px; font-weight: 800; color: var(--primary); }
-        .commission-info { font-size: 12px; color: var(--text-sec); display: block; margin-top: 2px; }
-        .status-badge { padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; float: right; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: #F2F2F7; }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 75%; font-size: 14px; }
+        .msg.me { align-self: flex-end; background: var(--primary); color: white; }
+        .msg.other { align-self: flex-start; background: white; }
     </style>
 </head>
 <body>
 
-<div id="scr-auth" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; background: white;">
-    <div style="font-size: 60px; margin-bottom: 20px;">🤝</div>
-    <h1 style="margin: 0; font-size: 32px; font-weight: 900;">МикроПомощь</h1>
-    <p style="color: var(--text-sec); margin-bottom: 40px;">Маркетплейс бытовых услуг</p>
-    
-    <button class="btn btn-primary" onclick="initApp('client')">Я Заказчик (Нужна помощь)</button>
-    <button class="btn btn-outline" onclick="initApp('worker')">Я Исполнитель (Ищу подработку)</button>
+<div id="notification">🔔 Уведомление</div>
+
+<div id="scr-auth" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; background: white; text-align: center;">
+    <h1 style="color: var(--primary); font-size: 40px; margin: 0;">MicroHelp</h1>
+    <p style="color: #8E8E93;">Помощь здесь и сейчас</p>
+    <div style="width: 100%; max-width: 300px;">
+        <button class="btn btn-p" onclick="login('client')">🙋‍♂️ Я Заказчик</button>
+        <button class="btn" style="background:#E5E5EA; color:#333" onclick="login('worker')">🛠 Я Исполнитель</button>
+    </div>
 </div>
 
 <div id="scr-main" style="display: none;">
     <div class="header">
-        <div class="logo">МикроПомощь</div>
-        <div style="text-align: right;">
-            <div id="user-balance" style="font-weight: 800;">0 ₽</div>
-            <div id="user-role" style="font-size: 10px; color: var(--text-sec);"></div>
+        <b id="page-title">Лента</b>
+        <div onclick="switchTab('profile')" style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+            <span id="header-balance" style="font-size: 14px;">0 ₽</span>
+            <span id="header-avatar" style="font-size: 20px;">👤</span>
         </div>
+    </div>
+
+    <div id="view-feed" class="container"></div>
+    <div id="view-my-orders" class="container" style="display:none"></div>
+    <div id="view-map" style="display:none"><div id="map"></div></div>
+    
+    <div id="view-create" class="container" style="display:none">
+        <h2>Новое задание</h2>
+        <div class="card">
+            <input id="inp-title" placeholder="Что нужно сделать?">
+            <input id="inp-price" type="number" placeholder="Стоимость (₽)">
+            <p style="font-size: 12px; color: #8E8E93;">Комиссия 0% для заказчика</p>
+            <button class="btn btn-p" onclick="createTask()">Опубликовать на карте</button>
+        </div>
+    </div>
+
+    <div id="view-profile" class="container" style="display:none">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 50px; margin-bottom: 10px;" id="profile-avatar">👤</div>
+            <h2 id="profile-name" style="margin:0">Имя</h2>
+            <div style="color: var(--orange); font-weight: 800; margin-top: 5px;">⭐ <span id="profile-rating">5.0</span></div>
+            <hr style="border: 0; border-top: 1px solid #EEE; margin: 20px 0;">
+            
+            <input id="edit-name" placeholder="Ваше имя">
+            <input id="edit-avatar" placeholder="Ваш аватар (эмодзи)">
+            <button class="btn btn-o" onclick="saveProfile()">Сохранить изменения</button>
+        </div>
+        <h3>Отзывы обо мне</h3>
+        <div id="reviews-list"></div>
     </div>
 
     <div class="nav-bottom">
-        <div class="nav-item active" onclick="switchTab('feed')" id="nav-feed">
-            <span class="nav-icon">🔍</span>Поиск
-        </div>
-        <div class="nav-item" onclick="switchTab('map')" id="nav-map">
-            <span class="nav-icon">🗺</span>Карта
-        </div>
-        <div class="nav-item" onclick="switchTab('create')" id="nav-create" style="display:none">
-            <span class="nav-icon">➕</span>Создать
-        </div>
-        <div class="nav-item" onclick="alert('Личный кабинет в разработке')">
-            <span class="nav-icon">👤</span>Профиль
-        </div>
-    </div>
-
-    <div class="container" style="padding-bottom: 100px;">
-        
-        <div id="view-create" style="display:none">
-            <h2 style="margin-top: 0;">Создать задание</h2>
-            <div class="card">
-                <label style="font-size: 12px; font-weight: 700; color: var(--text-sec); margin-bottom: 10px; display: block;">КАТЕГОРИЯ</label>
-                <div class="cat-grid">
-                    <div class="cat-item" onclick="selectCat(this, 'cleaning')"><span class="cat-icon">🧹</span><span class="cat-name">Уборка</span></div>
-                    <div class="cat-item" onclick="selectCat(this, 'courier')"><span class="cat-icon">📦</span><span class="cat-name">Курьер</span></div>
-                    <div class="cat-item" onclick="selectCat(this, 'repair')"><span class="cat-icon">🛠</span><span class="cat-name">Ремонт</span></div>
-                    <div class="cat-item" onclick="selectCat(this, 'pets')"><span class="cat-icon">🦮</span><span class="cat-name">Выгул</span></div>
-                </div>
-
-                <input id="inp-title" placeholder="Что нужно сделать? (Например: Выгулять пса)">
-                <textarea id="inp-desc" rows="3" placeholder="Детали задачи: порода собаки, код домофона..."></textarea>
-                
-                <div style="display: flex; gap: 10px;">
-                    <input id="inp-price" type="number" placeholder="Бюджет (₽)" style="font-weight: 700;">
-                    <div style="padding: 14px; background: #E5F1FF; border-radius: 12px; font-size: 12px; display: flex; align-items: center; color: var(--primary);">
-                        Комиссия сервиса 0% для заказчика
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" onclick="publishTask()">Опубликовать и найти помощника</button>
-            </div>
-        </div>
-
-        <div id="view-map" style="display:none">
-            <div id="map"></div>
-            <div style="text-align: center; color: var(--text-sec); font-size: 12px;">Показаны задачи в радиусе 2 км</div>
-        </div>
-
-        <div id="view-feed">
-            <h3 id="feed-title">Доступные задания</h3>
-            <div id="feed-list"></div>
-        </div>
+        <div class="nav-item active" onclick="switchTab('feed')" id="nav-feed"><span class="nav-icon">🏠</span>Лента</div>
+        <div class="nav-item" onclick="switchTab('map')" id="nav-map"><span class="nav-icon">🗺</span>Карта</div>
+        <div class="nav-item" onclick="switchTab('create')" id="nav-create" style="display:none"><span class="nav-icon">➕</span>Создать</div>
+        <div class="nav-item" onclick="switchTab('my-orders')" id="nav-my-orders" style="display:none"><span class="nav-icon">📋</span>Мои заказы</div>
+        <div class="nav-item" onclick="switchTab('profile')" id="nav-profile"><span class="nav-icon">👤</span>Профиль</div>
     </div>
 </div>
 
 <div id="chat-ui">
-    <div class="chat-header">
-        <button onclick="closeChat()" style="border:none; background:none; font-size: 24px;">✕</button>
-        <div>
-            <div id="chat-title-main">Чат заказа</div>
-            <div style="font-size: 12px; color: var(--text-sec);">Безопасная сделка</div>
-        </div>
+    <div class="header">
+        <button onclick="closeChat()" style="border:none; background:none; font-size: 20px;">✕</button>
+        <b id="chat-title">Чат</b>
+        <div style="width:20px"></div>
     </div>
     <div id="chat-box" class="chat-msgs"></div>
-    <div style="padding: 15px; background: white; border-top: 1px solid #EEE; display: flex; gap: 10px;">
-        <input id="chat-inp" placeholder="Напишите сообщение..." style="margin:0">
-        <button onclick="sendMessage()" class="btn btn-primary" style="width: auto; margin:0; padding: 0 20px;">➤</button>
+    <div style="padding:15px; border-top:1px solid #EEE; display:flex; gap:10px;">
+        <input id="chat-inp" placeholder="Сообщение..." style="margin:0">
+        <button class="btn btn-p" style="width:auto; margin:0; padding:0 20px" onclick="sendMsg()">➤</button>
+    </div>
+</div>
+
+<div id="review-modal">
+    <div class="card" style="width: 80%; text-align: center;">
+        <h3>Сделка завершена!</h3>
+        <p>Оцените сотрудничество:</p>
+        <div style="margin-bottom: 15px;">
+            <span class="star" onclick="setStar(1)">★</span>
+            <span class="star" onclick="setStar(2)">★</span>
+            <span class="star" onclick="setStar(3)">★</span>
+            <span class="star" onclick="setStar(4)">★</span>
+            <span class="star" onclick="setStar(5)">★</span>
+        </div>
+        <textarea id="review-text" rows="3" placeholder="Комментарий..."></textarea>
+        <button class="btn btn-p" onclick="submitReview()">Отправить отзыв</button>
     </div>
 </div>
 
 <script>
-    // --- КОНФИГУРАЦИЯ ---
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-    const COMMISSION_RATE = 0.15; // 15% комиссия
-
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
-    
-    // Состояние приложения
-    let state = {
-        user: { id: 'u_'+Math.floor(Math.random()*100000), role: 'guest', lat: 55.75, lon: 37.61, balance: 10000 },
-        activeCategory: null,
-        activeChatId: null,
-        map: null,
-        markers: {}
-    };
 
-    // --- ИНИЦИАЛИЗАЦИЯ ---
-    function initApp(role) {
-        state.user.role = role;
-        
-        // UI переключения
+    let user = { id: localStorage.getItem('mh_uid') || 'u_'+Math.floor(Math.random()*99999), role: 'guest', lat: 55.75, lon: 37.61 };
+    if(!localStorage.getItem('mh_uid')) localStorage.setItem('mh_uid', user.id); // Сохраняем ID
+
+    let state = { map: null, markers: {}, activeChat: null, currentReviewTask: null, reviewStars: 5 };
+
+    // --- 1. ВХОД И ПРОФИЛЬ ---
+    async function login(role) {
+        user.role = role;
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('scr-main').style.display = 'block';
-        document.getElementById('user-role').innerText = role === 'client' ? 'Заказчик' : 'Исполнитель';
-        document.getElementById('user-balance').innerText = state.user.balance + ' ₽';
 
-        if (role === 'client') {
+        // Настройка меню под роль
+        if(role === 'client') {
             document.getElementById('nav-create').style.display = 'block';
-            document.getElementById('feed-title').innerText = 'Мои задания';
+            document.getElementById('nav-my-orders').style.display = 'block';
             switchTab('create');
         } else {
             switchTab('feed');
         }
 
-        // Геолокация
-        navigator.geolocation.getCurrentPosition(pos => {
-            state.user.lat = pos.coords.latitude;
-            state.user.lon = pos.coords.longitude;
-            initMap(); // Инициализируем карту с реальными координатами
-        }, () => initMap()); // Или с дефолтными
-
-        // Запуск Realtime
-        loadTasks();
-        _supabase.channel('main').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadTasks).subscribe();
-    }
-
-    function initMap() {
-        if (state.map) return;
-        state.map = L.map('map').setView([state.user.lat, state.user.lon], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        
-        // Маркер пользователя (синий круг)
-        L.circleMarker([state.user.lat, state.user.lon], { radius: 8, color: '#007AFF', fillColor: '#007AFF', fillOpacity: 0.5 }).addTo(state.map)
-         .bindPopup("Вы здесь");
-    }
-
-    // --- БИЗНЕС ЛОГИКА ---
-    
-    async function publishTask() {
-        const title = document.getElementById('inp-title').value;
-        const desc = document.getElementById('inp-desc').value;
-        const price = document.getElementById('inp-price').value;
-        
-        if (!title || !price || !state.activeCategory) return alert("Заполните все поля и выберите категорию");
-
-        const { error } = await _supabase.from('tasks').insert([{
-            title, 
-            description: desc,
-            price: parseInt(price),
-            category: state.activeCategory,
-            client_id: state.user.id,
-            status: 'searching',
-            lat: state.user.lat, // Для прототипа берем текущую точку пользователя
-            lon: state.user.lon
-        }]);
-
-        if (error) alert("Ошибка: " + error.message);
-        else {
-            alert("Заказ опубликован! Деньги зарезервированы.");
-            // Имитация списания
-            state.user.balance -= price;
-            updateBalanceUI();
-            
-            // Очистка формы
-            document.getElementById('inp-title').value = '';
-            document.getElementById('inp-price').value = '';
-            switchTab('feed'); // Переход к списку
+        // Загрузка или создание профиля
+        const { data } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
+        if(!data) {
+            await _supabase.from('profiles').insert([{ id: user.id, name: role==='client'?'Заказчик':'Исполнитель' }]);
         }
+        loadProfile();
+
+        // Геолокация
+        navigator.geolocation.getCurrentPosition(p => { user.lat = p.coords.latitude; user.lon = p.coords.longitude; });
+
+        // ЗАПУСК REALTIME (СЕРДЦЕ ПРИЛОЖЕНИЯ)
+        initRealtime();
+    }
+
+    async function loadProfile() {
+        const { data } = await _supabase.from('profiles').select('*').eq('id', user.id).single();
+        if(data) {
+            document.getElementById('header-avatar').innerText = data.avatar;
+            document.getElementById('profile-avatar').innerText = data.avatar;
+            document.getElementById('profile-name').innerText = data.name;
+            document.getElementById('profile-rating').innerText = data.rating;
+            document.getElementById('edit-name').value = data.name;
+            document.getElementById('edit-avatar').value = data.avatar;
+        }
+        // Загрузка отзывов
+        const { data: revs } = await _supabase.from('reviews').select('*').eq('to_id', user.id);
+        const list = document.getElementById('reviews-list');
+        list.innerHTML = revs?.length ? '' : '<p style="font-size:12px; color:#999">Отзывов пока нет</p>';
+        revs?.forEach(r => {
+            list.innerHTML += `<div class="card" style="padding:10px; margin-bottom:10px;"><b style="color:orange">${'★'.repeat(r.stars)}</b><br>${r.comment}</div>`;
+        });
+    }
+
+    async function saveProfile() {
+        const name = document.getElementById('edit-name').value;
+        const avatar = document.getElementById('edit-avatar').value;
+        await _supabase.from('profiles').update({ name, avatar }).eq('id', user.id);
+        alert("Профиль сохранен!");
+        loadProfile();
+    }
+
+    // --- 2. REALTIME & ЗАДАЧИ ---
+    function initRealtime() {
+        loadTasks(); // Первичная загрузка
+        
+        _supabase.channel('main-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, payload => {
+            console.log('Изменение в базе:', payload);
+            loadTasks(); // Перерисовываем список
+            
+            // УВЕДОМЛЕНИЯ (ПУНКТ 2)
+            if(payload.eventType === 'UPDATE') {
+                const nav = payload.new;
+                const old = payload.old;
+                
+                // Если я заказчик и статус сменился на active -> Исполнитель найден
+                if(user.role === 'client' && nav.client_id === user.id && nav.status === 'active' && old.status === 'searching') {
+                    showNotification(`🚀 Исполнитель найден! Можно открыть чат.`);
+                }
+                
+                // Если я заказчик и статус completed -> Пора оставить отзыв
+                if(user.role === 'client' && nav.client_id === user.id && nav.status === 'completed') {
+                    openReviewModal(nav.id, nav.worker_id);
+                }
+
+                // Если я исполнитель и статус completed
+                if(user.role === 'worker' && nav.worker_id === user.id && nav.status === 'completed') {
+                    openReviewModal(nav.id, nav.client_id);
+                }
+            }
+        })
+        .subscribe();
     }
 
     async function loadTasks() {
-        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        renderFeed(tasks || []);
-        updateMapMarkers(tasks || []);
+        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', {ascending: false});
+        renderFeed(tasks);
+        renderMyOrders(tasks);
+        updateMap(tasks);
     }
 
+    // ЛЕНТА (ДЛЯ ИСПОЛНИТЕЛЯ)
     function renderFeed(tasks) {
-        const list = document.getElementById('feed-list');
-        list.innerHTML = '';
-
-        tasks.forEach(task => {
-            // Фильтрация: Заказчик видит только свои, Исполнитель видит все доступные + свои активные
-            let isVisible = false;
-            if (state.user.role === 'client' && task.client_id === state.user.id) isVisible = true;
-            if (state.user.role === 'worker' && (task.status === 'searching' || task.worker_id === state.user.id)) isVisible = true;
-
-            if (!isVisible) return;
-
-            // Расчет комиссии
-            const income = Math.floor(task.price * (1 - COMMISSION_RATE));
-            const distance = getDistanceInKm(state.user.lat, state.user.lon, task.lat, task.lon).toFixed(1);
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            
-            let statusBadge = '';
-            let actionBtn = '';
-
-            // Логика отображения кнопок и статусов
-            if (task.status === 'searching') {
-                statusBadge = '<span class="status-badge" style="background:#E5F1FF; color:var(--primary)">ПОИСК</span>';
-                if (state.user.role === 'worker') {
-                    actionBtn = `<button class="btn btn-primary" onclick="takeTask('${task.id}')">Взять заказ (Доход: ${income} ₽)</button>`;
-                }
-            } else if (task.status === 'active') {
-                statusBadge = '<span class="status-badge" style="background:#FFF4E5; color:var(--orange)">В РАБОТЕ</span>';
-                actionBtn = `<button class="btn btn-outline" onclick="openChat('${task.id}', '${task.title}')">💬 Чат с ${state.user.role === 'client' ? 'исполнителем' : 'заказчиком'}</button>`;
-                
-                if (state.user.role === 'client') {
-                    actionBtn += `<button class="btn btn-success" style="margin-top:5px" onclick="finishTask('${task.id}', ${task.price})">✅ Подтвердить и оплатить</button>`;
-                }
-            } else {
-                statusBadge = '<span class="status-badge" style="background:#E8F8EE; color:var(--green)">ВЫПОЛНЕНО</span>';
+        const feed = document.getElementById('view-feed');
+        feed.innerHTML = user.role === 'client' ? '<h3>Все доступные задачи (демо)</h3>' : '<h3>Лента заказов</h3>';
+        
+        tasks.forEach(t => {
+            if(t.status === 'searching') {
+                const card = createCard(t);
+                feed.appendChild(card);
             }
-
-            card.innerHTML = `
-                ${statusBadge}
-                <div style="font-size: 24px; margin-bottom: 5px;">${getCatIcon(task.category)}</div>
-                <div style="font-weight: 800; font-size: 18px; margin-bottom: 5px;">${task.title}</div>
-                <div style="color: var(--text-sec); font-size: 14px; margin-bottom: 10px;">${task.description || 'Нет описания'}</div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <div style="font-size: 12px; color: var(--text-sec);">📍 ${distance} км от вас</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="price-tag">${task.price} ₽</div>
-                        ${state.user.role === 'worker' ? `<span class="commission-info">Чистыми: ${income} ₽</span>` : ''}
-                    </div>
-                </div>
-                ${actionBtn}
-            `;
-            list.appendChild(card);
         });
+    }
+
+    // МОИ ЗАКАЗЫ (ДЛЯ ЗАКАЗЧИКА - ПУНКТ 1)
+    function renderMyOrders(tasks) {
+        const list = document.getElementById('view-my-orders');
+        list.innerHTML = '<h3>Мои активные задачи</h3>';
+        
+        tasks.forEach(t => {
+            if((user.role === 'client' && t.client_id === user.id) || (user.role === 'worker' && t.worker_id === user.id)) {
+                const card = createCard(t);
+                list.appendChild(card);
+            }
+        });
+    }
+
+    function createCard(t) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        
+        let statusColor = t.status === 'searching' ? '#007AFF' : (t.status === 'active' ? '#FF9500' : '#34C759');
+        let statusText = t.status === 'searching' ? 'ПОИСК' : (t.status === 'active' ? 'В РАБОТЕ' : 'ЗАВЕРШЕНО');
+        
+        // Кнопки действий
+        let actions = '';
+        if(user.role === 'worker' && t.status === 'searching') {
+            actions = `<button class="btn btn-p" onclick="takeTask('${t.id}')">Взять заказ</button>`;
+        }
+        if(t.status === 'active' && (t.client_id === user.id || t.worker_id === user.id)) {
+            actions = `<button class="btn btn-o" onclick="openChat('${t.id}', '${t.title}')">💬 Чат</button>`;
+            if(user.role === 'client') {
+                actions += `<button class="btn btn-g" style="margin-top:5px" onclick="completeTask('${t.id}')">✅ Завершить и оценить</button>`;
+            }
+        }
+        if(t.status === 'completed') {
+            actions = `<div style="text-align:center; color:green; font-weight:bold; margin-top:10px;">Сделка закрыта</div>`;
+        }
+
+        div.innerHTML = `
+            <span class="badge" style="background:${statusColor}; color:white">${statusText}</span>
+            <div style="font-weight:800; font-size:18px;">${t.title}</div>
+            <div style="font-size:20px; color:var(--primary); font-weight:bold; margin:5px 0;">${t.price} ₽</div>
+            ${actions}
+        `;
+        return div;
+    }
+
+    // --- 3. ДЕЙСТВИЯ ---
+    async function createTask() {
+        const title = document.getElementById('inp-title').value;
+        const price = document.getElementById('inp-price').value;
+        if(!title || !price) return alert('Заполните поля');
+        
+        await _supabase.from('tasks').insert([{
+            title, price: parseInt(price), client_id: user.id, 
+            status: 'searching', lat: user.lat, lon: user.lon
+        }]);
+        
+        document.getElementById('inp-title').value = '';
+        document.getElementById('inp-price').value = '';
+        switchTab('my-orders');
+        showNotification("Заказ создан! Ждем исполнителя.");
     }
 
     async function takeTask(id) {
-        if (!confirm("Взять заказ в работу? Сумма будет захолдирована.")) return;
-        await _supabase.from('tasks').update({ status: 'active', worker_id: state.user.id }).eq('id', id);
+        await _supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', id);
     }
 
-    async function finishTask(id, amount) {
-        if (!confirm("Подтверждаете выполнение? Деньги уйдут исполнителю.")) return;
-        await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
-        alert("Заказ закрыт! Спасибо за использование МикроПомощь.");
+    async function completeTask(id) {
+        if(confirm("Работа выполнена?")) {
+            await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+        }
     }
 
-    // --- ЧАТ ---
-    async function openChat(taskId, title) {
-        state.activeChatId = taskId;
-        document.getElementById('chat-ui').style.display = 'flex';
-        document.getElementById('chat-title-main').innerText = title;
-        loadMessages();
-        _supabase.channel('chat_'+taskId).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `task_id=eq.${taskId}` }, loadMessages).subscribe();
-    }
+    // --- 4. КАРТА (ПУНКТ 4) ---
+    function updateMap(tasks) {
+        if(!state.map && document.getElementById('map').offsetParent) {
+            state.map = L.map('map').setView([user.lat, user.lon], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+        }
+        if(!state.map) return;
 
-    async function loadMessages() {
-        const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChatId).order('created_at');
-        const box = document.getElementById('chat-box');
-        box.innerHTML = '';
-        data.forEach(m => {
-            const el = document.createElement('div');
-            el.className = `msg-bubble ${m.sender_id === state.user.id ? 'msg-me' : 'msg-other'}`;
-            el.innerText = m.text;
-            box.appendChild(el);
-        });
-        box.scrollTop = box.scrollHeight;
-    }
-
-    async function sendMessage() {
-        const txt = document.getElementById('chat-inp').value;
-        if (!txt) return;
-        await _supabase.from('messages').insert([{ task_id: state.activeChatId, sender_id: state.user.id, text: txt }]);
-        document.getElementById('chat-inp').value = '';
-    }
-
-    function closeChat() { document.getElementById('chat-ui').style.display = 'none'; }
-
-    // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-    
-    function updateMapMarkers(tasks) {
-        if (!state.map) return;
-        // Очистка старых (упрощенно: просто добавляем новые)
         tasks.forEach(t => {
-            if (t.status === 'searching') {
-                const icon = L.divIcon({
-                    className: 'custom-pin',
-                    html: `<div style="background:var(--primary); color:white; padding:5px; border-radius:8px; font-weight:bold; font-size:12px; width:40px; text-align:center;">${t.price}</div>`
-                });
-                L.marker([t.lat + (Math.random()*0.002), t.lon + (Math.random()*0.002)], {icon: icon}) // Смещение, чтобы не накладывались
-                 .addTo(state.map)
-                 .bindPopup(`<b>${t.title}</b><br>${t.description}<br><button onclick="takeTask('${t.id}')">Взять</button>`);
+            if(t.status === 'searching' && !state.markers[t.id]) {
+                // Создаем маркер с подробным описанием
+                const marker = L.marker([t.lat, t.lon]).addTo(state.map);
+                marker.bindPopup(`
+                    <div style="text-align:center">
+                        <b>${t.title}</b><br>
+                        <span style="font-size:16px; color:#007AFF; font-weight:bold">${t.price} ₽</span><br>
+                        <button onclick="takeTask('${t.id}')" style="margin-top:5px; padding:5px; background:#007AFF; color:white; border:none; border-radius:5px;">Взять</button>
+                    </div>
+                `);
+                state.markers[t.id] = marker;
+            } else if (t.status !== 'searching' && state.markers[t.id]) {
+                state.map.removeLayer(state.markers[t.id]);
+                delete state.markers[t.id];
             }
         });
     }
 
-    function switchTab(tab) {
-        ['feed', 'map', 'create'].forEach(t => {
-            const el = document.getElementById('view-'+t);
-            const nav = document.getElementById('nav-'+t);
-            if (el) el.style.display = (t === tab) ? 'block' : 'none';
-            if (nav) nav.classList.toggle('active', t === tab);
+    // --- 5. ОТЗЫВЫ (ПУНКТ 6) ---
+    function openReviewModal(taskId, targetId) {
+        state.currentReviewTask = { taskId, targetId };
+        document.getElementById('review-modal').style.display = 'flex';
+    }
+
+    function setStar(n) {
+        state.reviewStars = n;
+        document.querySelectorAll('.star').forEach((s, i) => {
+            s.classList.toggle('active', i < n);
         });
-        if (tab === 'map' && state.map) setTimeout(() => state.map.invalidateSize(), 200);
     }
 
-    function selectCat(el, cat) {
-        document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('selected'));
-        el.classList.add('selected');
-        state.activeCategory = cat;
+    async function submitReview() {
+        const text = document.getElementById('review-text').value;
+        await _supabase.from('reviews').insert([{
+            task_id: state.currentReviewTask.taskId,
+            from_id: user.id,
+            to_id: state.currentReviewTask.targetId,
+            stars: state.reviewStars,
+            comment: text
+        }]);
+        
+        // Обновляем рейтинг пользователя
+        // (в реальном приложении это делается триггером в БД, здесь упрощенно не делаем пересчет, просто сохраняем отзыв)
+        
+        document.getElementById('review-modal').style.display = 'none';
+        showNotification("Спасибо за отзыв!");
     }
 
-    function getCatIcon(cat) {
-        const map = { 'cleaning': '🧹', 'courier': '📦', 'repair': '🛠', 'pets': '🦮' };
-        return map[cat] || '📋';
+    // --- 6. ЧАТ ---
+    async function openChat(id, title) {
+        state.activeChat = id;
+        document.getElementById('chat-ui').style.display = 'flex';
+        document.getElementById('chat-title').innerText = title;
+        loadMsgs();
+        _supabase.channel('chat-'+id).on('postgres_changes', {event:'INSERT', schema:'public', table:'messages', filter:`task_id=eq.${id}`}, loadMsgs).subscribe();
+    }
+    async function loadMsgs() {
+        const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChat).order('created_at');
+        const box = document.getElementById('chat-box');
+        box.innerHTML = '';
+        data.forEach(m => {
+            box.innerHTML += `<div class="msg ${m.sender_id === user.id ? 'me' : 'other'}">${m.text}</div>`;
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+    async function sendMsg() {
+        const text = document.getElementById('chat-inp').value;
+        if(!text) return;
+        await _supabase.from('messages').insert([{ task_id: state.activeChat, sender_id: user.id, text }]);
+        document.getElementById('chat-inp').value = '';
+    }
+    function closeChat() { document.getElementById('chat-ui').style.display = 'none'; }
+
+    // УТИЛИТЫ
+    function switchTab(tab) {
+        document.querySelectorAll('.container').forEach(e => e.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        
+        // Специфика для карты
+        const view = document.getElementById('view-'+tab);
+        if(view) view.style.display = 'block';
+        
+        // Если это карта, нужно обновить размер Leaflet
+        if(tab === 'map') {
+            document.getElementById('view-map').style.display = 'block';
+            setTimeout(() => state.map.invalidateSize(), 200);
+        }
+
+        const nav = document.getElementById('nav-'+tab);
+        if(nav) nav.classList.add('active');
+        
+        document.getElementById('page-title').innerText = nav ? nav.innerText : 'МикроПомощь';
     }
 
-    function updateBalanceUI() { document.getElementById('user-balance').innerText = state.user.balance + ' ₽'; }
-
-    // Простая формула гаверсинуса для расстояния (км)
-    function getDistanceInKm(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2-lat1) * (Math.PI/180);
-        const dLon = (lon2-lon1) * (Math.PI/180);
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*(Math.PI/180)) * Math.cos(lat2*(Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
-        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    function showNotification(text) {
+        const el = document.getElementById('notification');
+        el.innerText = text;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 4000);
     }
 </script>
 </body>
