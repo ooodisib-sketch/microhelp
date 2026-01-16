@@ -6,142 +6,230 @@
     <title>MicroHelp PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
-        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .container { padding: 15px; max-width: 500px; margin: 0 auto; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; background: var(--p); color: white; }
-        input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #DDD; box-sizing: border-box; }
+        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); -webkit-tap-highlight-color: transparent; }
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .nav-tabs { display: flex; background: #E5E5EA; margin: 15px; border-radius: 12px; padding: 2px; }
+        .tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px; transition: 0.2s; }
+        .tab.active { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { padding: 0 15px 100px 15px; }
+        #map { height: 300px; width: 100%; border-radius: 20px; margin-bottom: 15px; display: none; border: 2px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; position: relative; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
+        .btn:active { transform: scale(0.97); }
+        .btn-p { background: var(--p); color: white; }
+        .badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; float: right; font-weight: 800; text-transform: uppercase; }
+        input { width: 100%; padding: 14px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #DDD; box-sizing: border-box; font-family: inherit; font-size: 16px; }
+        
+        #chat-ui { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: #F8F9FB; }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 14px; line-height: 1.4; }
+        .msg.me { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
+        .msg.other { align-self: flex-start; background: #E5E5EA; color: black; border-bottom-left-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <div id="scr-auth" class="container" style="text-align: center; padding-top: 100px;">
-        <h1 style="color: var(--p); font-size: 40px; margin-bottom: 0;">MicroHelp</h1>
-        <p style="opacity: 0.6; margin-bottom: 30px;">Помощь в реальном времени</p>
-        <button class="btn" onclick="startApp('client')">🙋‍♂️ Я Заказчик</button>
-        <button class="btn" style="background:#8E8E93; margin-top:12px" onclick="startApp('worker')">🛠 Я Помощник</button>
+<div id="scr-auth" style="text-align: center; padding-top: 100px;">
+    <h1 style="color: var(--p); font-size: 42px; font-weight: 900; letter-spacing: -1px;">MicroHelp</h1>
+    <p style="opacity: 0.5;">Сервис мгновенной помощи</p>
+    <div class="container">
+        <button class="btn btn-p" onclick="startApp('client')">🙋‍♂️ Я Заказчик</button>
+        <button class="btn" style="background:#E5E5EA; color: #333; margin-top: 12px;" onclick="startApp('worker')">🛠 Я Помощник</button>
+    </div>
+</div>
+
+<div id="scr-main" style="display:none">
+    <div class="header">
+        <b id="user-role-label" style="color:var(--p)">Личный кабинет</b>
+        <div id="balance" style="font-weight: 800;">5000 ₽</div>
+    </div>
+    
+    <div class="nav-tabs">
+        <div class="tab active" id="tab-list" onclick="switchView('list')">Список</div>
+        <div class="tab" id="tab-map" onclick="switchView('map')">Карта</div>
     </div>
 
-    <div id="scr-main" style="display:none">
-        <div class="header"><b>MicroHelp PRO</b> <span id="user-role-tag" style="font-size:10px; opacity:0.5; text-transform:uppercase"></span></div>
-        <div class="container">
-            <div id="client-ui" style="display:none" class="card">
-                <h3 style="margin-top:0">Новый заказ</h3>
-                <input id="title" placeholder="Что нужно сделать?">
-                <input id="price" type="number" placeholder="Бюджет ₽">
-                <button class="btn" onclick="createTask()">Опубликовать</button>
-            </div>
-            <div id="feed"></div>
+    <div class="container">
+        <div id="map"></div>
+        
+        <div id="client-ui" style="display:none" class="card">
+            <h3 style="margin:0 0 15px 0">Новый заказ 🛡</h3>
+            <input id="inp-title" placeholder="Что нужно сделать?">
+            <input id="inp-price" type="number" placeholder="Бюджет в ₽">
+            <button class="btn btn-p" onclick="createTask()">Опубликовать и заморозить</button>
         </div>
+        
+        <div id="orders-feed"></div>
+    </div>
+</div>
+
+<div id="chat-ui">
+    <div class="header" style="border-bottom: 1px solid #EEE;">
+        <button onclick="closeChat()" style="border:none; background:none; font-size:24px; cursor:pointer;">✕</button>
+        <b id="chat-order-name">Чат</b>
+        <div style="width:24px"></div>
+    </div>
+    <div id="chat-box" class="chat-box"></div>
+    <div style="padding:15px 15px 30px 15px; display:flex; gap:10px; background:white; border-top:1px solid #EEE;">
+        <input id="chat-input" placeholder="Введите сообщение..." style="margin:0;">
+        <button class="btn btn-p" style="width:auto; margin:0; padding: 0 20px;" onclick="sendMsg()">➤</button>
     </div>
 </div>
 
 <script>
-    // ТВОИ НОВЫЕ КЛЮЧИ (СВЕЖИЕ)
-    const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co'; 
+    // ТВОИ КЛЮЧИ ПОДКЛЮЧЕНЫ
+    const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-    
-    // Инициализация
-    const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
+    const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
-    let userRole = '';
-    let userId = 'u' + Math.floor(Math.random() * 10000);
+    let user = { role: '', id: 'u' + Math.floor(Math.random()*90000), lat: 55.75, lon: 37.61 };
+    let map, markers = {}, activeChatTask = null;
 
-    // ГЛАВНАЯ ФУНКЦИЯ ЗАПУСКА
     async function startApp(role) {
-        console.log("Запуск приложения как:", role);
-        userRole = role;
-        
+        user.role = role;
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('scr-main').style.display = 'block';
-        document.getElementById('user-role-tag').innerText = role;
-        
-        if(role === 'client') {
-            document.getElementById('client-ui').style.display = 'block';
-        }
-        
+        document.getElementById('user-role-label').innerText = role === 'client' ? 'Заказчик' : 'Помощник';
+        if(role === 'client') document.getElementById('client-ui').style.display = 'block';
+
+        navigator.geolocation.getCurrentPosition(p => { 
+            user.lat = p.coords.latitude; user.lon = p.coords.longitude; 
+        });
+
         loadTasks();
-        
-        // Включаем слежение за изменениями в реальном времени
-        _supabase.channel('custom-all-channel')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-              console.log("База обновилась, перегружаем список...");
-              loadTasks();
-          })
-          .subscribe();
+
+        // ВКЛЮЧАЕМ REALTIME ДЛЯ ВСЕХ ИЗМЕНЕНИЙ
+        _supabase.channel('any').on('postgres_changes', {event:'*', schema:'public', table:'tasks'}, () => {
+            loadTasks();
+        }).subscribe();
     }
 
     async function loadTasks() {
-        const { data, error } = await _supabase
-            .from('tasks')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error("Ошибка при загрузке:", error.message);
-            return;
-        }
+        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', {ascending: false});
+        const feed = document.getElementById('orders-feed');
+        feed.innerHTML = '';
 
-        const feed = document.getElementById('feed');
-        feed.innerHTML = '<h4>Лента заказов:</h4>';
-        
-        data.forEach(t => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div style="float:right; font-size:10px; font-weight:bold; color:orange">${t.status}</div>
-                <b>${t.title}</b><br>
-                <span style="color:var(--p); font-weight:800">${t.price} ₽</span>
-            `;
-            
-            if(userRole === 'worker' && t.status === 'searching') {
-                const btn = document.createElement('button');
-                btn.className = 'btn';
-                btn.style.marginTop = '10px';
-                btn.innerText = 'Взять заказ';
-                btn.onclick = () => takeTask(t.id);
-                card.appendChild(btn);
+        tasks?.forEach(t => {
+            if(t.status === 'searching' || t.client_id === user.id || t.worker_id === user.id) {
+                // Добавляем на карту если в режиме поиска
+                if(t.status === 'searching' && map && t.lat) {
+                    if(!markers[t.id]) {
+                        markers[t.id] = L.marker([t.lat, t.lon]).addTo(map).bindPopup(`<b>${t.title}</b><br>${t.price}₽`);
+                    }
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                const s = t.status;
+                const badgeColor = s==='searching' ? 'var(--p)' : (s==='active' ? 'var(--orange)' : 'var(--green)');
+                
+                card.innerHTML = `
+                    <span class="badge" style="background:${badgeColor}; color:white">${s}</span>
+                    <b style="font-size:17px;">${t.title}</b><br>
+                    <span style="color:var(--p); font-weight:800; font-size:18px;">${t.price} ₽</span>
+                `;
+
+                if(user.role === 'worker' && s === 'searching') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-p'; btn.innerText = 'Принять заказ 🛡';
+                    btn.onclick = () => updateTaskStatus(t.id, 'active');
+                    card.appendChild(btn);
+                }
+
+                if(s === 'active' && (t.client_id === user.id || t.worker_id === user.id)) {
+                    const btnChat = document.createElement('button');
+                    btnChat.className = 'btn btn-p'; btnChat.innerText = 'Открыть чат';
+                    btnChat.onclick = () => openChat(t.id, t.title);
+                    card.appendChild(btnChat);
+                    
+                    if(user.role === 'client') {
+                        const btnFinish = document.createElement('button');
+                        btnFinish.className = 'btn'; btnFinish.style.background = 'var(--green)'; btnFinish.style.color='white';
+                        btnFinish.innerText = 'Завершить и Оплатить 🛡';
+                        btnFinish.onclick = () => updateTaskStatus(t.id, 'completed');
+                        card.appendChild(btnFinish);
+                    }
+                }
+                feed.appendChild(card);
             }
-            feed.appendChild(card);
         });
     }
 
     async function createTask() {
-        const t = document.getElementById('title').value;
-        const p = document.getElementById('price').value;
-        if(!t || !p) return alert("Заполни все поля!");
+        const title = document.getElementById('inp-title').value;
+        const price = document.getElementById('inp-price').value;
+        if(!title || !price) return alert("Введите данные");
 
-        const { error } = await _supabase.from('tasks').insert([{ 
-            title: t, 
-            price: parseInt(p), 
-            client_id: userId,
-            status: 'searching'
+        await _supabase.from('tasks').insert([{ 
+            title, price: parseInt(price), client_id: user.id, 
+            lat: user.lat, lon: user.lon, status: 'searching' 
         }]);
 
-        if(error) {
-            alert("Ошибка: " + error.message);
-        } else {
-            document.getElementById('title').value = '';
-            document.getElementById('price').value = '';
-            // Список обновится автоматически через Realtime
+        document.getElementById('inp-title').value = '';
+        document.getElementById('inp-price').value = '';
+    }
+
+    async function updateTaskStatus(id, status) {
+        const updateData = { status };
+        if(user.role === 'worker') updateData.worker_id = user.id;
+        await _supabase.from('tasks').update(updateData).eq('id', id);
+    }
+
+    function switchView(type) {
+        document.getElementById('tab-list').classList.toggle('active', type === 'list');
+        document.getElementById('tab-map').classList.toggle('active', type === 'map');
+        document.getElementById('map').style.display = type === 'map' ? 'block' : 'none';
+        if(type === 'map') {
+            if(!map) {
+                map = L.map('map').setView([user.lat, user.lon], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            }
+            setTimeout(() => map.invalidateSize(), 200);
         }
     }
 
-    async function takeTask(id) {
-        const { error } = await _supabase
-            .from('tasks')
-            .update({ status: 'active', worker_id: userId })
-            .eq('id', id);
-            
-        if(error) alert("Ошибка: " + error.message);
-        else alert("Вы взяли заказ в работу!");
+    // ЛОГИКА ЧАТА (REALTIME)
+    async function openChat(taskId, title) {
+        activeChatTask = taskId;
+        document.getElementById('chat-ui').style.display = 'flex';
+        document.getElementById('chat-order-name').innerText = title;
+        
+        loadMessages();
+
+        // Подписка на новые сообщения именно для этого заказа
+        _supabase.channel('chat-'+taskId).on('postgres_changes', {
+            event: 'INSERT', schema: 'public', table: 'messages', filter: `task_id=eq.${taskId}`
+        }, () => loadMessages()).subscribe();
     }
+
+    async function loadMessages() {
+        const { data } = await _supabase.from('messages').select('*').eq('task_id', activeChatTask).order('created_at', {ascending: true});
+        const box = document.getElementById('chat-box');
+        box.innerHTML = '';
+        data?.forEach(m => {
+            const div = document.createElement('div');
+            div.className = `msg ${m.sender_id === user.id ? 'me' : 'other'}`;
+            div.innerText = m.text;
+            box.appendChild(div);
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendMsg() {
+        const inp = document.getElementById('chat-input');
+        if(!inp.value) return;
+        await _supabase.from('messages').insert([{ task_id: activeChatTask, sender_id: user.id, text: inp.value }]);
+        inp.value = '';
+    }
+
+    function closeChat() { document.getElementById('chat-ui').style.display = 'none'; }
 </script>
 </body>
 </html>
