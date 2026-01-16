@@ -11,170 +11,118 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); padding-bottom: 50px; }
-        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .container { padding: 15px; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        #map { height: 300px; width: 100%; border-radius: 20px; margin-bottom: 15px; display: none; }
-        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 14px; }
-        .btn-p { background: var(--p); color: white; }
-        .nav-tabs { display: flex; background: #E5E5EA; margin-bottom: 15px; border-radius: 12px; padding: 2px; }
-        .tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px; }
-        .tab.active { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #DDD; box-sizing: border-box; font-size: 16px; }
+        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 50px; }
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .container { padding: 15px; max-width: 500px; margin: 0 auto; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; }
+        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; background: var(--p); color: white; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: 1px solid #DDD; box-sizing: border-box; }
+        .nav-tabs { display: flex; background: #E5E5EA; border-radius: 12px; padding: 2px; margin-bottom: 15px; }
+        .tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 10px; }
+        .tab.active { background: white; }
     </style>
 </head>
 <body>
 
-<div id="scr-auth" class="container" style="text-align: center; padding-top: 100px;">
-    <h1 style="font-weight: 900; color: var(--p); font-size: 40px; margin-bottom: 5px;">MicroHelp</h1>
-    <p style="opacity: 0.6; margin-bottom: 30px;">Помощь в реальном времени</p>
-    <button class="btn btn-p" onclick="initApp('client')" style="margin-bottom: 12px;">🙋‍♂️ Я Заказчик</button>
-    <button class="btn btn-p" style="background:#8E8E93" onclick="initApp('worker')">🛠 Я Помощник</button>
-</div>
-
-<div id="scr-main" style="display:none">
-    <div class="header">
-        <b style="color:var(--p)">MicroHelp PRO</b>
-        <div id="balance" style="font-weight: 800;">5000 ₽</div>
+<div id="app">
+    <div id="scr-auth" class="container" style="text-align: center; padding-top: 100px;">
+        <h1 style="color: var(--p); font-size: 40px;">MicroHelp</h1>
+        <button class="btn" onclick="startApp('client')">🙋‍♂️ Я Заказчик</button>
+        <button class="btn" style="background:#8E8E93; margin-top:10px" onclick="startApp('worker')">🛠 Я Помощник</button>
     </div>
-    <div class="container">
-        <div class="nav-tabs">
-            <div class="tab active" onclick="setView('list', this)">Список</div>
-            <div class="tab" onclick="setView('map', this)">Карта</div>
+
+    <div id="scr-main" style="display:none">
+        <div class="header"><b>MicroHelp PRO</b> <span id="user-role" style="font-size:10px; opacity:0.5"></span></div>
+        <div class="container">
+            <div id="client-ui" style="display:none" class="card">
+                <h3>Новый заказ</h3>
+                <input id="title" placeholder="Что сделать?">
+                <input id="price" type="number" placeholder="Бюджет ₽">
+                <button class="btn" onclick="createTask()">Опубликовать</button>
+            </div>
+            <div id="feed"></div>
         </div>
-        <div id="map"></div>
-        <div id="client-ui" style="display:none" class="card">
-            <h3 style="margin-top: 0;">Создать заказ 🛡</h3>
-            <input id="title" placeholder="Что нужно сделать?">
-            <input id="price" type="number" placeholder="Бюджет ₽">
-            <button class="btn btn-p" onclick="createTask()">Опубликовать</button>
-        </div>
-        <div id="feed"></div>
     </div>
 </div>
 
 <script>
-    // ИСПОЛЬЗУЕМ ТВОИ КЛЮЧИ
+    // ТВОИ ДАННЫЕ
     const SB_URL = 'https://b2ktzbpsmcwvrpuppfng.supabase.co'; 
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
     
-    // Исправленная инициализация для браузера
-    const _supabase = supabase.createClient(SB_URL, SB_KEY);
+    // Инициализация БЕЗ зависания
+    const _supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
-    let user = { id: 'u' + Math.floor(Math.random()*10000), role: '', lat: 55.75, lon: 37.61 };
-    let map;
+    let userRole = '';
+    let userId = 'u' + Math.floor(Math.random() * 10000);
 
-    async function initApp(role) {
-        user.role = role;
+    function startApp(role) {
+        userRole = role;
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('scr-main').style.display = 'block';
+        document.getElementById('user-role').innerText = role;
         if(role === 'client') document.getElementById('client-ui').style.display = 'block';
         
-        navigator.geolocation.getCurrentPosition(p => {
-            user.lat = p.coords.latitude; user.lon = p.coords.longitude;
-        });
-
         loadTasks();
         
-        // Подписка на обновления в реальном времени (Realtime)
-        _supabase
-          .channel('any')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, payload => {
-              loadTasks();
-          })
-          .subscribe();
+        // Подписка на обновления
+        _supabase.channel('tasks-db').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+            loadTasks();
+        }).subscribe();
     }
 
     async function loadTasks() {
-        const { data: tasks, error } = await _supabase
-            .from('tasks')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+        console.log("Загрузка данных...");
+        const { data, error } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        
         if (error) {
-            console.error("Ошибка загрузки:", error.message);
+            console.error("Ошибка Supabase:", error.message);
             return;
         }
 
         const feed = document.getElementById('feed');
         feed.innerHTML = '';
         
-        tasks.forEach(t => {
-            // Показываем только актуальные заказы
-            if (t.status === 'searching' || t.client_id === user.id || t.worker_id === user.id) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <span style="float:right; font-size:10px; font-weight:bold; color:${t.status === 'active' ? 'orange' : 'green'}">${t.status.toUpperCase()}</span>
-                    <b style="font-size: 18px;">${t.title}</b><br>
-                    <span style="font-size: 20px; font-weight: 800; color: var(--p);">${t.price} ₽</span>
-                `;
-                
-                if (user.role === 'worker' && t.status === 'searching') {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-p';
-                    btn.style.marginTop = '15px';
-                    btn.innerText = 'Взять заказ 🛡';
-                    btn.onclick = () => takeTask(t.id);
-                    card.appendChild(btn);
-                }
-                feed.appendChild(card);
+        data.forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<b>${t.title}</b><br><span style="color:#007AFF">${t.price} ₽</span><br><small>Статус: ${t.status}</small>`;
+            
+            if(userRole === 'worker' && t.status === 'searching') {
+                const btn = document.createElement('button');
+                btn.className = 'btn'; btn.style.marginTop = '10px'; btn.innerText = 'Взять заказ';
+                btn.onclick = () => takeTask(t.id);
+                card.appendChild(btn);
             }
+            feed.appendChild(card);
         });
     }
 
     async function createTask() {
-        const titleEl = document.getElementById('title');
-        const priceEl = document.getElementById('price');
-        
-        if(!titleEl.value || !priceEl.value) {
-            alert("Пожалуйста, заполните все поля");
-            return;
-        }
-        
+        const t = document.getElementById('title').value;
+        const p = document.getElementById('price').value;
+        if(!t || !p) return alert("Заполни поля!");
+
+        console.log("Отправка заказа...");
         const { error } = await _supabase.from('tasks').insert([{ 
-            title: titleEl.value, 
-            price: parseInt(priceEl.value), 
-            client_id: user.id, 
-            lat: user.lat, 
-            lon: user.lon,
-            status: 'searching' 
+            title: t, 
+            price: parseInt(p), 
+            client_id: userId,
+            status: 'searching'
         }]);
 
-        if (error) {
-            alert("Ошибка базы: " + error.message);
+        if(error) {
+            alert("Ошибка при создании: " + error.message);
         } else {
-            titleEl.value = '';
-            priceEl.value = '';
+            document.getElementById('title').value = '';
+            document.getElementById('price').value = '';
         }
     }
 
     async function takeTask(id) {
-        const { error } = await _supabase
-            .from('tasks')
-            .update({ status: 'active', worker_id: user.id })
-            .eq('id', id);
-            
-        if (error) {
-            alert("Не удалось взять заказ: " + error.message);
-        } else {
-            alert("Заказ принят в работу!");
-        }
-    }
-
-    function setView(v, el) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        el.classList.add('active');
-        document.getElementById('map').style.display = v === 'map' ? 'block' : 'none';
-        if(v === 'map') {
-            if(!map) {
-                map = L.map('map').setView([user.lat, user.lon], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            }
-            setTimeout(() => map.invalidateSize(), 200);
-        }
+        await _supabase.from('tasks').update({ status: 'active', worker_id: userId }).eq('id', id);
+        alert("Заказ взят!");
     }
 </script>
 </body>
