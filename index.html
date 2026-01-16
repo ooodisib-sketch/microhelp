@@ -3,151 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MicroHelp - Живая лента</title>
+    <title>MicroHelp PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
-        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE; position: relative; }
-        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
-        .btn-main { background: var(--p); color: white; }
-        .btn-ghost { background: #E5E5EA; color: var(--text); }
-        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #DDD; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
-        .status-badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; float: right; background: #E5F1FF; color: var(--p); }
-        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); overflow-x: hidden; }
+        
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .logo { font-weight: 800; color: var(--p); font-size: 20px; }
+        
+        .nav-tabs { display: flex; background: #E5E5EA; margin: 15px; border-radius: 12px; padding: 2px; }
+        .tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px; }
+        .tab.active { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        .container { padding: 0 15px 100px 15px; }
+        #map { height: 350px; width: 100%; border-radius: 20px; margin-bottom: 15px; display: none; border: 2px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; position: relative; }
+        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; }
+        .btn-p { background: var(--p); color: white; }
+        .btn-s { background: var(--green); color: white; }
+        
+        /* Чат */
+        #chat-ui { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
+        .chat-msg { padding: 10px 15px; border-radius: 15px; margin: 5px; max-width: 80%; font-size: 14px; }
+        .sent { align-self: flex-end; background: var(--p); color: white; }
+        .received { align-self: flex-start; background: #E5E5EA; }
+
         .screen { display: none; }
-        .active { display: block; }
+        .active-screen { display: block; }
+        .badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; float: right; background: #E5F1FF; color: var(--p); }
     </style>
 </head>
 <body>
 
-<div id="screen-auth" class="screen active">
-    <div class="container" style="text-align: center; margin-top: 80px;">
-        <h1 style="font-weight: 900; color: var(--p); font-size: 40px; margin-bottom: 10px;">MicroHelp</h1>
-        <p style="margin-bottom: 40px; opacity: 0.6;">Сервис мгновенной помощи</p>
-        <button class="btn btn-main" style="padding: 25px;" onclick="init('client')">🙋‍♂️ Я Заказчик</button>
-        <button class="btn btn-ghost" style="padding: 25px;" onclick="init('worker')">🛠 Я Исполнитель</button>
+<div id="scr-auth" class="screen active-screen">
+    <div style="text-align: center; padding-top: 100px;">
+        <h1 class="logo" style="font-size: 40px;">MicroHelp</h1>
+        <div class="container">
+            <button class="btn btn-p" onclick="initApp('client')">🙋‍♂️ Я Заказчик</button>
+            <button class="btn btn-p" style="background:#8E8E93" onclick="initApp('worker')">🛠 Я Исполнитель</button>
+        </div>
     </div>
 </div>
 
-<div id="screen-app" class="screen">
+<div id="scr-main" class="screen">
     <div class="header">
-        <b id="role-name">Загрузка...</b>
-        <span id="user-id-display" style="font-size: 10px; opacity: 0.5;"></span>
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--p); font-weight:700;">Выйти</button>
+        <div class="logo">MH</div>
+        <div id="balance-view" style="font-weight: 700; font-size: 14px;">5000 ₽</div>
+        <div onclick="showSettings()" style="cursor:pointer">⚙️</div>
+    </div>
+
+    <div class="nav-tabs">
+        <div class="tab active" id="tab-list" onclick="switchView('list')">Список</div>
+        <div class="tab" id="tab-map" onclick="switchView('map')">Карта</div>
     </div>
 
     <div class="container">
-        <div id="client-ui" style="display:none;">
+        <div id="map"></div>
+        
+        <div id="client-tools" style="display:none">
             <div class="card">
-                <h3 style="margin-top:0">Новое задание</h3>
-                <input id="title" placeholder="Что нужно сделать?">
-                <input id="price" type="number" placeholder="Бюджет (₽)">
-                <button class="btn btn-main" onclick="addTask()">Опубликовать</button>
+                <input id="inp-title" placeholder="Что нужно сделать?">
+                <input id="inp-price" type="number" placeholder="Бюджет ₽">
+                <button class="btn btn-p" onclick="createOrder()">Создать заказ 🛡</button>
             </div>
-            <h4>Мои активные заказы</h4>
         </div>
 
-        <div id="worker-ui" style="display:none;">
-            <h3 style="margin-top:0">Заказы рядом</h3>
-        </div>
+        <div id="orders-feed"></div>
+    </div>
+</div>
 
-        <div id="task-list"></div>
+<div id="chat-ui">
+    <div class="header">
+        <button onclick="closeChat()">←</button>
+        <b id="chat-order-title">Чат</b>
+        <span></span>
+    </div>
+    <div id="chat-box" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column;"></div>
+    <div style="padding:15px; border-top:1px solid #EEE; display:flex; gap:10px;">
+        <input id="chat-inp" style="flex:1; padding:12px; border-radius:10px; border:1px solid #DDD;">
+        <button class="btn btn-p" style="width:auto; margin:0" onclick="sendMsg()">➤</button>
     </div>
 </div>
 
 <script>
-    // Инициализация базы данных (работает через публичные узлы)
     const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
-    const tasks = gun.get('microhelp_tasks_v1');
+    const db = gun.get('microhelp_v5_prod');
     
-    let myId = 'user_' + Math.random().toString(36).substr(2, 5);
-    let myRole = '';
+    let user = { id: 'u' + Math.floor(Math.random()*1000), role: '', balance: 5000, lat: 55.75, lon: 37.61 };
+    let activeChatId = null;
+    let map, markers = {};
 
-    function init(role) {
-        myRole = role;
-        document.getElementById('screen-auth').classList.remove('active');
-        document.getElementById('screen-app').classList.add('active');
-        document.getElementById('role-name').innerText = role === 'client' ? 'Кабинет Заказчика' : 'Кабинет Исполнителя';
-        document.getElementById('user-id-display').innerText = 'ID: ' + myId;
+    function initApp(role) {
+        user.role = role;
+        document.getElementById('scr-auth').classList.remove('active-screen');
+        document.getElementById('scr-main').classList.add('active-screen');
+        if(role === 'client') document.getElementById('client-tools').style.display = 'block';
         
-        if(role === 'client') document.getElementById('client-ui').style.display = 'block';
-        else document.getElementById('worker-ui').style.display = 'block';
+        navigator.geolocation.getCurrentPosition(p => {
+            user.lat = p.coords.latitude;
+            user.lon = p.coords.longitude;
+            initMap();
+        }, () => initMap());
 
         render();
     }
 
-    function addTask() {
-        const title = document.getElementById('title').value;
-        const price = document.getElementById('price').value;
-        if(!title || !price) return alert('Заполните все поля');
+    function initMap() {
+        map = L.map('map').setView([user.lat, user.lon], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    }
 
-        const taskId = 'task_' + Date.now();
-        tasks.get(taskId).put({
-            id: taskId,
-            title: title,
-            price: price,
-            clientId: myId,
-            status: 'searching',
-            time: Date.now()
+    function switchView(type) {
+        document.getElementById('tab-list').classList.toggle('active', type === 'list');
+        document.getElementById('tab-map').classList.toggle('active', type === 'map');
+        document.getElementById('map').style.display = type === 'map' ? 'block' : 'none';
+        if(type === 'map') setTimeout(() => map.invalidateSize(), 200);
+    }
+
+    function createOrder() {
+        const t = document.getElementById('inp-title').value;
+        const p = document.getElementById('inp-price').value;
+        if(!t || !p) return;
+
+        const id = 'ord_' + Date.now();
+        db.get(id).put({
+            id, title: t, price: p, status: 'searching', 
+            cId: user.id, lat: user.lat, lon: user.lon
         });
-
-        document.getElementById('title').value = '';
-        document.getElementById('price').value = '';
-        playSound();
+        document.getElementById('inp-title').value = '';
     }
 
     function render() {
-        const list = document.getElementById('task-list');
-        
-        // Слушаем изменения в базе в реальном времени
-        tasks.map().on((data, id) => {
-            if (!data || !data.title) return;
+        const feed = document.getElementById('orders-feed');
+        db.map().on((data, id) => {
+            if(!data || !data.title) return;
 
-            // Проверяем, существует ли уже карточка на экране
-            let el = document.getElementById(id);
-            if (!el) {
-                el = document.createElement('div');
-                el.id = id;
-                el.className = 'card';
-                list.prepend(el); // Новые вверх
+            // Обновление карты
+            if(data.status === 'searching' && !markers[id]) {
+                markers[id] = L.marker([data.lat, data.lon]).addTo(map)
+                    .bindPopup(`<b>${data.title}</b><br>${data.price} ₽`);
             }
 
-            const isMyTask = data.clientId === myId;
+            // Обновление списка
+            let el = document.getElementById(id);
+            if(!el) {
+                el = document.createElement('div');
+                el.id = id; el.className = 'card';
+                feed.prepend(el);
+            }
 
-            // Отображаем задачи в зависимости от роли
-            if (myRole === 'worker' && data.status === 'searching') {
-                el.style.display = 'block';
-                el.innerHTML = `<span class="status-badge">Доступно</span><b>${data.title}</b><br>${data.price} ₽
-                                <button class="btn btn-main" onclick="takeTask('${id}')">Взять заказ</button>`;
-            } else if (myRole === 'client' && isMyTask) {
-                el.style.display = 'block';
-                const statusText = data.status === 'searching' ? 'Поиск...' : 'В работе';
-                el.innerHTML = `<span class="status-badge">${statusText}</span><b>${data.title}</b><br>${data.price} ₽`;
+            const isMine = data.cId === user.id;
+            const isIWorker = data.wId === user.id;
+
+            if(data.status === 'searching') {
+                el.innerHTML = `<span class="badge">Поиск</span><b>${data.title}</b><br>${data.price} ₽`;
+                if(user.role === 'worker') el.innerHTML += `<button class="btn btn-p" onclick="takeOrder('${id}')">Взять заказ</button>`;
+            } else if(data.status === 'active' && (isMine || isIWorker)) {
+                el.innerHTML = `<span class="badge" style="background:var(--orange); color:white">В работе</span><b>${data.title}</b><br>${data.price} ₽
+                                <button class="btn btn-p" onclick="openChat('${id}', '${data.title}')">Открыть чат</button>`;
+                if(isMine) el.innerHTML += `<button class="btn btn-s" onclick="completeOrder('${id}')">Оплатить ${data.price} ₽ 🛡</button>`;
+            } else if(data.status === 'done' && (isMine || isIWorker)) {
+                el.innerHTML = `<span class="badge" style="background:var(--green); color:white">Завершено</span><b>${data.title}</b>`;
             } else {
                 el.style.display = 'none';
             }
         });
     }
 
-    function takeTask(id) {
-        tasks.get(id).put({ status: 'active', workerId: myId });
-        alert('Вы взяли заказ! Свяжитесь с заказчиком (чат в разработке)');
+    function takeOrder(id) {
+        db.get(id).put({ status: 'active', wId: user.id });
+        alert("Заказ взят! Средства заморожены системой.");
     }
 
-    function playSound() {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start(); osc.stop(ctx.currentTime + 0.5);
+    function completeOrder(id) {
+        db.get(id).put({ status: 'done' });
+        alert("Оплата переведена исполнителю. Спасибо!");
     }
+
+    // ЛОГИКА ЧАТА
+    function openChat(id, title) {
+        activeChatId = id;
+        document.getElementById('chat-ui').style.display = 'flex';
+        document.getElementById('chat-order-title').innerText = title;
+        
+        const box = document.getElementById('chat-box');
+        box.innerHTML = '';
+        db.get(id).get('chats').map().on(m => {
+            if(!m) return;
+            const mEl = document.createElement('div');
+            mEl.className = `chat-msg ${m.u === user.id ? 'sent' : 'received'}`;
+            mEl.innerText = m.t;
+            box.appendChild(mEl);
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    function sendMsg() {
+        const t = document.getElementById('chat-inp').value;
+        if(!t) return;
+        db.get(activeChatId).get('chats').set({ u: user.id, t: t, time: Date.now() });
+        document.getElementById('chat-inp').value = '';
+    }
+
+    function closeChat() { document.getElementById('chat-ui').style.display = 'none'; }
+    function showSettings() { alert("Настройки: \nID: " + user.id + "\nБаланс: " + user.balance + " ₽"); }
 </script>
+
 </body>
 </html>
