@@ -3,233 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MicroHelp PRO</title>
+    <title>МикроПомощь | Гиперлокальный сервис</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); -webkit-tap-highlight-color: transparent; }
-        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .nav-tabs { display: flex; background: #E5E5EA; margin: 15px; border-radius: 12px; padding: 2px; }
-        .tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px; transition: 0.2s; }
-        .tab.active { background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .container { padding: 0 15px 100px 15px; }
-        #map { height: 300px; width: 100%; border-radius: 20px; margin-bottom: 15px; display: none; border: 2px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; border: 1px solid #EEE; position: relative; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
-        .btn:active { transform: scale(0.97); }
-        .btn-p { background: var(--p); color: white; }
-        .badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; float: right; font-weight: 800; text-transform: uppercase; }
-        input { width: 100%; padding: 14px; margin-bottom: 8px; border-radius: 12px; border: 1px solid #DDD; box-sizing: border-box; font-family: inherit; font-size: 16px; }
+        :root { 
+            --primary: #007AFF; 
+            --bg: #F2F2F7; 
+            --surface: #FFFFFF; 
+            --text-main: #1C1C1E; 
+            --text-sec: #8E8E93;
+            --green: #34C759; 
+            --orange: #FF9500;
+            --danger: #FF3B30;
+        }
         
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text-main); -webkit-tap-highlight-color: transparent; padding-bottom: 80px; }
+        
+        /* UI КОМПОНЕНТЫ */
+        .header { background: var(--surface); padding: 15px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 1px 0 rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 900; font-size: 20px; color: var(--primary); letter-spacing: -0.5px; }
+        
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+        
+        .card { background: var(--surface); border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.03); }
+        .card:active { transform: scale(0.98); }
+        
+        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-size: 15px; margin-top: 10px; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-success { background: var(--green); color: white; }
+        
+        input, select, textarea { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 12px; border: 1px solid #E5E5EA; background: #F9F9F9; box-sizing: border-box; font-family: inherit; font-size: 16px; }
+        
+        /* КАТЕГОРИИ */
+        .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .cat-item { background: white; border-radius: 12px; padding: 10px 5px; text-align: center; border: 1px solid #EEE; cursor: pointer; }
+        .cat-item.selected { border-color: var(--primary); background: #E5F1FF; color: var(--primary); }
+        .cat-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+        .cat-name { font-size: 10px; font-weight: 700; }
+
+        /* МЕНЮ И КАРТА */
+        .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #EEE; z-index: 999; }
+        .nav-item { text-align: center; font-size: 10px; color: var(--text-sec); font-weight: 600; cursor: pointer; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        
+        #map { height: 350px; width: 100%; border-radius: 20px; margin-bottom: 20px; z-index: 1; }
+        
+        /* ЧАТ */
         #chat-ui { position: fixed; inset: 0; background: white; z-index: 2000; display: none; flex-direction: column; }
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: #F8F9FB; }
-        .msg { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 14px; line-height: 1.4; }
-        .msg.me { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .msg.other { align-self: flex-start; background: #E5E5EA; color: black; border-bottom-left-radius: 4px; }
+        .chat-header { padding: 15px; border-bottom: 1px solid #EEE; display: flex; align-items: center; gap: 15px; font-weight: 700; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F2F2F7; }
+        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.4; }
+        .msg-me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 4px; }
+        .msg-other { align-self: flex-start; background: white; border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* СТАТУСЫ И ЦЕНЫ */
+        .price-tag { font-size: 18px; font-weight: 800; color: var(--primary); }
+        .commission-info { font-size: 12px; color: var(--text-sec); display: block; margin-top: 2px; }
+        .status-badge { padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; float: right; }
     </style>
 </head>
 <body>
 
-<div id="scr-auth" style="text-align: center; padding-top: 100px;">
-    <h1 style="color: var(--p); font-size: 42px; font-weight: 900; letter-spacing: -1px;">MicroHelp</h1>
-    <p style="opacity: 0.5;">Сервис мгновенной помощи</p>
-    <div class="container">
-        <button class="btn btn-p" onclick="startApp('client')">🙋‍♂️ Я Заказчик</button>
-        <button class="btn" style="background:#E5E5EA; color: #333; margin-top: 12px;" onclick="startApp('worker')">🛠 Я Помощник</button>
-    </div>
+<div id="scr-auth" style="height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; background: white;">
+    <div style="font-size: 60px; margin-bottom: 20px;">🤝</div>
+    <h1 style="margin: 0; font-size: 32px; font-weight: 900;">МикроПомощь</h1>
+    <p style="color: var(--text-sec); margin-bottom: 40px;">Маркетплейс бытовых услуг</p>
+    
+    <button class="btn btn-primary" onclick="initApp('client')">Я Заказчик (Нужна помощь)</button>
+    <button class="btn btn-outline" onclick="initApp('worker')">Я Исполнитель (Ищу подработку)</button>
 </div>
 
-<div id="scr-main" style="display:none">
+<div id="scr-main" style="display: none;">
     <div class="header">
-        <b id="user-role-label" style="color:var(--p)">Личный кабинет</b>
-        <div id="balance" style="font-weight: 800;">5000 ₽</div>
-    </div>
-    
-    <div class="nav-tabs">
-        <div class="tab active" id="tab-list" onclick="switchView('list')">Список</div>
-        <div class="tab" id="tab-map" onclick="switchView('map')">Карта</div>
+        <div class="logo">МикроПомощь</div>
+        <div style="text-align: right;">
+            <div id="user-balance" style="font-weight: 800;">0 ₽</div>
+            <div id="user-role" style="font-size: 10px; color: var(--text-sec);"></div>
+        </div>
     </div>
 
-    <div class="container">
-        <div id="map"></div>
-        
-        <div id="client-ui" style="display:none" class="card">
-            <h3 style="margin:0 0 15px 0">Новый заказ 🛡</h3>
-            <input id="inp-title" placeholder="Что нужно сделать?">
-            <input id="inp-price" type="number" placeholder="Бюджет в ₽">
-            <button class="btn btn-p" onclick="createTask()">Опубликовать и заморозить</button>
+    <div class="nav-bottom">
+        <div class="nav-item active" onclick="switchTab('feed')" id="nav-feed">
+            <span class="nav-icon">🔍</span>Поиск
         </div>
+        <div class="nav-item" onclick="switchTab('map')" id="nav-map">
+            <span class="nav-icon">🗺</span>Карта
+        </div>
+        <div class="nav-item" onclick="switchTab('create')" id="nav-create" style="display:none">
+            <span class="nav-icon">➕</span>Создать
+        </div>
+        <div class="nav-item" onclick="alert('Личный кабинет в разработке')">
+            <span class="nav-icon">👤</span>Профиль
+        </div>
+    </div>
+
+    <div class="container" style="padding-bottom: 100px;">
         
-        <div id="orders-feed"></div>
+        <div id="view-create" style="display:none">
+            <h2 style="margin-top: 0;">Создать задание</h2>
+            <div class="card">
+                <label style="font-size: 12px; font-weight: 700; color: var(--text-sec); margin-bottom: 10px; display: block;">КАТЕГОРИЯ</label>
+                <div class="cat-grid">
+                    <div class="cat-item" onclick="selectCat(this, 'cleaning')"><span class="cat-icon">🧹</span><span class="cat-name">Уборка</span></div>
+                    <div class="cat-item" onclick="selectCat(this, 'courier')"><span class="cat-icon">📦</span><span class="cat-name">Курьер</span></div>
+                    <div class="cat-item" onclick="selectCat(this, 'repair')"><span class="cat-icon">🛠</span><span class="cat-name">Ремонт</span></div>
+                    <div class="cat-item" onclick="selectCat(this, 'pets')"><span class="cat-icon">🦮</span><span class="cat-name">Выгул</span></div>
+                </div>
+
+                <input id="inp-title" placeholder="Что нужно сделать? (Например: Выгулять пса)">
+                <textarea id="inp-desc" rows="3" placeholder="Детали задачи: порода собаки, код домофона..."></textarea>
+                
+                <div style="display: flex; gap: 10px;">
+                    <input id="inp-price" type="number" placeholder="Бюджет (₽)" style="font-weight: 700;">
+                    <div style="padding: 14px; background: #E5F1FF; border-radius: 12px; font-size: 12px; display: flex; align-items: center; color: var(--primary);">
+                        Комиссия сервиса 0% для заказчика
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="publishTask()">Опубликовать и найти помощника</button>
+            </div>
+        </div>
+
+        <div id="view-map" style="display:none">
+            <div id="map"></div>
+            <div style="text-align: center; color: var(--text-sec); font-size: 12px;">Показаны задачи в радиусе 2 км</div>
+        </div>
+
+        <div id="view-feed">
+            <h3 id="feed-title">Доступные задания</h3>
+            <div id="feed-list"></div>
+        </div>
     </div>
 </div>
 
 <div id="chat-ui">
-    <div class="header" style="border-bottom: 1px solid #EEE;">
-        <button onclick="closeChat()" style="border:none; background:none; font-size:24px; cursor:pointer;">✕</button>
-        <b id="chat-order-name">Чат</b>
-        <div style="width:24px"></div>
+    <div class="chat-header">
+        <button onclick="closeChat()" style="border:none; background:none; font-size: 24px;">✕</button>
+        <div>
+            <div id="chat-title-main">Чат заказа</div>
+            <div style="font-size: 12px; color: var(--text-sec);">Безопасная сделка</div>
+        </div>
     </div>
-    <div id="chat-box" class="chat-box"></div>
-    <div style="padding:15px 15px 30px 15px; display:flex; gap:10px; background:white; border-top:1px solid #EEE;">
-        <input id="chat-input" placeholder="Введите сообщение..." style="margin:0;">
-        <button class="btn btn-p" style="width:auto; margin:0; padding: 0 20px;" onclick="sendMsg()">➤</button>
+    <div id="chat-box" class="chat-msgs"></div>
+    <div style="padding: 15px; background: white; border-top: 1px solid #EEE; display: flex; gap: 10px;">
+        <input id="chat-inp" placeholder="Напишите сообщение..." style="margin:0">
+        <button onclick="sendMessage()" class="btn btn-primary" style="width: auto; margin:0; padding: 0 20px;">➤</button>
     </div>
 </div>
 
 <script>
-    // ТВОИ КЛЮЧИ ПОДКЛЮЧЕНЫ
+    // --- КОНФИГУРАЦИЯ ---
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
+    const COMMISSION_RATE = 0.15; // 15% комиссия
+
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
+    
+    // Состояние приложения
+    let state = {
+        user: { id: 'u_'+Math.floor(Math.random()*100000), role: 'guest', lat: 55.75, lon: 37.61, balance: 10000 },
+        activeCategory: null,
+        activeChatId: null,
+        map: null,
+        markers: {}
+    };
 
-    let user = { role: '', id: 'u' + Math.floor(Math.random()*90000), lat: 55.75, lon: 37.61 };
-    let map, markers = {}, activeChatTask = null;
-
-    async function startApp(role) {
-        user.role = role;
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    function initApp(role) {
+        state.user.role = role;
+        
+        // UI переключения
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('scr-main').style.display = 'block';
-        document.getElementById('user-role-label').innerText = role === 'client' ? 'Заказчик' : 'Помощник';
-        if(role === 'client') document.getElementById('client-ui').style.display = 'block';
+        document.getElementById('user-role').innerText = role === 'client' ? 'Заказчик' : 'Исполнитель';
+        document.getElementById('user-balance').innerText = state.user.balance + ' ₽';
 
-        navigator.geolocation.getCurrentPosition(p => { 
-            user.lat = p.coords.latitude; user.lon = p.coords.longitude; 
-        });
+        if (role === 'client') {
+            document.getElementById('nav-create').style.display = 'block';
+            document.getElementById('feed-title').innerText = 'Мои задания';
+            switchTab('create');
+        } else {
+            switchTab('feed');
+        }
 
+        // Геолокация
+        navigator.geolocation.getCurrentPosition(pos => {
+            state.user.lat = pos.coords.latitude;
+            state.user.lon = pos.coords.longitude;
+            initMap(); // Инициализируем карту с реальными координатами
+        }, () => initMap()); // Или с дефолтными
+
+        // Запуск Realtime
         loadTasks();
-
-        // ВКЛЮЧАЕМ REALTIME ДЛЯ ВСЕХ ИЗМЕНЕНИЙ
-        _supabase.channel('any').on('postgres_changes', {event:'*', schema:'public', table:'tasks'}, () => {
-            loadTasks();
-        }).subscribe();
+        _supabase.channel('main').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadTasks).subscribe();
     }
 
-    async function loadTasks() {
-        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', {ascending: false});
-        const feed = document.getElementById('orders-feed');
-        feed.innerHTML = '';
-
-        tasks?.forEach(t => {
-            if(t.status === 'searching' || t.client_id === user.id || t.worker_id === user.id) {
-                // Добавляем на карту если в режиме поиска
-                if(t.status === 'searching' && map && t.lat) {
-                    if(!markers[t.id]) {
-                        markers[t.id] = L.marker([t.lat, t.lon]).addTo(map).bindPopup(`<b>${t.title}</b><br>${t.price}₽`);
-                    }
-                }
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                const s = t.status;
-                const badgeColor = s==='searching' ? 'var(--p)' : (s==='active' ? 'var(--orange)' : 'var(--green)');
-                
-                card.innerHTML = `
-                    <span class="badge" style="background:${badgeColor}; color:white">${s}</span>
-                    <b style="font-size:17px;">${t.title}</b><br>
-                    <span style="color:var(--p); font-weight:800; font-size:18px;">${t.price} ₽</span>
-                `;
-
-                if(user.role === 'worker' && s === 'searching') {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-p'; btn.innerText = 'Принять заказ 🛡';
-                    btn.onclick = () => updateTaskStatus(t.id, 'active');
-                    card.appendChild(btn);
-                }
-
-                if(s === 'active' && (t.client_id === user.id || t.worker_id === user.id)) {
-                    const btnChat = document.createElement('button');
-                    btnChat.className = 'btn btn-p'; btnChat.innerText = 'Открыть чат';
-                    btnChat.onclick = () => openChat(t.id, t.title);
-                    card.appendChild(btnChat);
-                    
-                    if(user.role === 'client') {
-                        const btnFinish = document.createElement('button');
-                        btnFinish.className = 'btn'; btnFinish.style.background = 'var(--green)'; btnFinish.style.color='white';
-                        btnFinish.innerText = 'Завершить и Оплатить 🛡';
-                        btnFinish.onclick = () => updateTaskStatus(t.id, 'completed');
-                        card.appendChild(btnFinish);
-                    }
-                }
-                feed.appendChild(card);
-            }
-        });
+    function initMap() {
+        if (state.map) return;
+        state.map = L.map('map').setView([state.user.lat, state.user.lon], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+        
+        // Маркер пользователя (синий круг)
+        L.circleMarker([state.user.lat, state.user.lon], { radius: 8, color: '#007AFF', fillColor: '#007AFF', fillOpacity: 0.5 }).addTo(state.map)
+         .bindPopup("Вы здесь");
     }
 
-    async function createTask() {
+    // --- БИЗНЕС ЛОГИКА ---
+    
+    async function publishTask() {
         const title = document.getElementById('inp-title').value;
+        const desc = document.getElementById('inp-desc').value;
         const price = document.getElementById('inp-price').value;
-        if(!title || !price) return alert("Введите данные");
+        
+        if (!title || !price || !state.activeCategory) return alert("Заполните все поля и выберите категорию");
 
-        await _supabase.from('tasks').insert([{ 
-            title, price: parseInt(price), client_id: user.id, 
-            lat: user.lat, lon: user.lon, status: 'searching' 
+        const { error } = await _supabase.from('tasks').insert([{
+            title, 
+            description: desc,
+            price: parseInt(price),
+            category: state.activeCategory,
+            client_id: state.user.id,
+            status: 'searching',
+            lat: state.user.lat, // Для прототипа берем текущую точку пользователя
+            lon: state.user.lon
         }]);
 
-        document.getElementById('inp-title').value = '';
-        document.getElementById('inp-price').value = '';
-    }
-
-    async function updateTaskStatus(id, status) {
-        const updateData = { status };
-        if(user.role === 'worker') updateData.worker_id = user.id;
-        await _supabase.from('tasks').update(updateData).eq('id', id);
-    }
-
-    function switchView(type) {
-        document.getElementById('tab-list').classList.toggle('active', type === 'list');
-        document.getElementById('tab-map').classList.toggle('active', type === 'map');
-        document.getElementById('map').style.display = type === 'map' ? 'block' : 'none';
-        if(type === 'map') {
-            if(!map) {
-                map = L.map('map').setView([user.lat, user.lon], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            }
-            setTimeout(() => map.invalidateSize(), 200);
+        if (error) alert("Ошибка: " + error.message);
+        else {
+            alert("Заказ опубликован! Деньги зарезервированы.");
+            // Имитация списания
+            state.user.balance -= price;
+            updateBalanceUI();
+            
+            // Очистка формы
+            document.getElementById('inp-title').value = '';
+            document.getElementById('inp-price').value = '';
+            switchTab('feed'); // Переход к списку
         }
     }
 
-    // ЛОГИКА ЧАТА (REALTIME)
-    async function openChat(taskId, title) {
-        activeChatTask = taskId;
-        document.getElementById('chat-ui').style.display = 'flex';
-        document.getElementById('chat-order-name').innerText = title;
-        
-        loadMessages();
+    async function loadTasks() {
+        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        renderFeed(tasks || []);
+        updateMapMarkers(tasks || []);
+    }
 
-        // Подписка на новые сообщения именно для этого заказа
-        _supabase.channel('chat-'+taskId).on('postgres_changes', {
-            event: 'INSERT', schema: 'public', table: 'messages', filter: `task_id=eq.${taskId}`
-        }, () => loadMessages()).subscribe();
+    function renderFeed(tasks) {
+        const list = document.getElementById('feed-list');
+        list.innerHTML = '';
+
+        tasks.forEach(task => {
+            // Фильтрация: Заказчик видит только свои, Исполнитель видит все доступные + свои активные
+            let isVisible = false;
+            if (state.user.role === 'client' && task.client_id === state.user.id) isVisible = true;
+            if (state.user.role === 'worker' && (task.status === 'searching' || task.worker_id === state.user.id)) isVisible = true;
+
+            if (!isVisible) return;
+
+            // Расчет комиссии
+            const income = Math.floor(task.price * (1 - COMMISSION_RATE));
+            const distance = getDistanceInKm(state.user.lat, state.user.lon, task.lat, task.lon).toFixed(1);
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            let statusBadge = '';
+            let actionBtn = '';
+
+            // Логика отображения кнопок и статусов
+            if (task.status === 'searching') {
+                statusBadge = '<span class="status-badge" style="background:#E5F1FF; color:var(--primary)">ПОИСК</span>';
+                if (state.user.role === 'worker') {
+                    actionBtn = `<button class="btn btn-primary" onclick="takeTask('${task.id}')">Взять заказ (Доход: ${income} ₽)</button>`;
+                }
+            } else if (task.status === 'active') {
+                statusBadge = '<span class="status-badge" style="background:#FFF4E5; color:var(--orange)">В РАБОТЕ</span>';
+                actionBtn = `<button class="btn btn-outline" onclick="openChat('${task.id}', '${task.title}')">💬 Чат с ${state.user.role === 'client' ? 'исполнителем' : 'заказчиком'}</button>`;
+                
+                if (state.user.role === 'client') {
+                    actionBtn += `<button class="btn btn-success" style="margin-top:5px" onclick="finishTask('${task.id}', ${task.price})">✅ Подтвердить и оплатить</button>`;
+                }
+            } else {
+                statusBadge = '<span class="status-badge" style="background:#E8F8EE; color:var(--green)">ВЫПОЛНЕНО</span>';
+            }
+
+            card.innerHTML = `
+                ${statusBadge}
+                <div style="font-size: 24px; margin-bottom: 5px;">${getCatIcon(task.category)}</div>
+                <div style="font-weight: 800; font-size: 18px; margin-bottom: 5px;">${task.title}</div>
+                <div style="color: var(--text-sec); font-size: 14px; margin-bottom: 10px;">${task.description || 'Нет описания'}</div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-sec);">📍 ${distance} км от вас</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="price-tag">${task.price} ₽</div>
+                        ${state.user.role === 'worker' ? `<span class="commission-info">Чистыми: ${income} ₽</span>` : ''}
+                    </div>
+                </div>
+                ${actionBtn}
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function takeTask(id) {
+        if (!confirm("Взять заказ в работу? Сумма будет захолдирована.")) return;
+        await _supabase.from('tasks').update({ status: 'active', worker_id: state.user.id }).eq('id', id);
+    }
+
+    async function finishTask(id, amount) {
+        if (!confirm("Подтверждаете выполнение? Деньги уйдут исполнителю.")) return;
+        await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+        alert("Заказ закрыт! Спасибо за использование МикроПомощь.");
+    }
+
+    // --- ЧАТ ---
+    async function openChat(taskId, title) {
+        state.activeChatId = taskId;
+        document.getElementById('chat-ui').style.display = 'flex';
+        document.getElementById('chat-title-main').innerText = title;
+        loadMessages();
+        _supabase.channel('chat_'+taskId).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `task_id=eq.${taskId}` }, loadMessages).subscribe();
     }
 
     async function loadMessages() {
-        const { data } = await _supabase.from('messages').select('*').eq('task_id', activeChatTask).order('created_at', {ascending: true});
+        const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChatId).order('created_at');
         const box = document.getElementById('chat-box');
         box.innerHTML = '';
-        data?.forEach(m => {
-            const div = document.createElement('div');
-            div.className = `msg ${m.sender_id === user.id ? 'me' : 'other'}`;
-            div.innerText = m.text;
-            box.appendChild(div);
+        data.forEach(m => {
+            const el = document.createElement('div');
+            el.className = `msg-bubble ${m.sender_id === state.user.id ? 'msg-me' : 'msg-other'}`;
+            el.innerText = m.text;
+            box.appendChild(el);
         });
         box.scrollTop = box.scrollHeight;
     }
 
-    async function sendMsg() {
-        const inp = document.getElementById('chat-input');
-        if(!inp.value) return;
-        await _supabase.from('messages').insert([{ task_id: activeChatTask, sender_id: user.id, text: inp.value }]);
-        inp.value = '';
+    async function sendMessage() {
+        const txt = document.getElementById('chat-inp').value;
+        if (!txt) return;
+        await _supabase.from('messages').insert([{ task_id: state.activeChatId, sender_id: state.user.id, text: txt }]);
+        document.getElementById('chat-inp').value = '';
     }
 
     function closeChat() { document.getElementById('chat-ui').style.display = 'none'; }
+
+    // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+    
+    function updateMapMarkers(tasks) {
+        if (!state.map) return;
+        // Очистка старых (упрощенно: просто добавляем новые)
+        tasks.forEach(t => {
+            if (t.status === 'searching') {
+                const icon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="background:var(--primary); color:white; padding:5px; border-radius:8px; font-weight:bold; font-size:12px; width:40px; text-align:center;">${t.price}</div>`
+                });
+                L.marker([t.lat + (Math.random()*0.002), t.lon + (Math.random()*0.002)], {icon: icon}) // Смещение, чтобы не накладывались
+                 .addTo(state.map)
+                 .bindPopup(`<b>${t.title}</b><br>${t.description}<br><button onclick="takeTask('${t.id}')">Взять</button>`);
+            }
+        });
+    }
+
+    function switchTab(tab) {
+        ['feed', 'map', 'create'].forEach(t => {
+            const el = document.getElementById('view-'+t);
+            const nav = document.getElementById('nav-'+t);
+            if (el) el.style.display = (t === tab) ? 'block' : 'none';
+            if (nav) nav.classList.toggle('active', t === tab);
+        });
+        if (tab === 'map' && state.map) setTimeout(() => state.map.invalidateSize(), 200);
+    }
+
+    function selectCat(el, cat) {
+        document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('selected'));
+        el.classList.add('selected');
+        state.activeCategory = cat;
+    }
+
+    function getCatIcon(cat) {
+        const map = { 'cleaning': '🧹', 'courier': '📦', 'repair': '🛠', 'pets': '🦮' };
+        return map[cat] || '📋';
+    }
+
+    function updateBalanceUI() { document.getElementById('user-balance').innerText = state.user.balance + ' ₽'; }
+
+    // Простая формула гаверсинуса для расстояния (км)
+    function getDistanceInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2-lat1) * (Math.PI/180);
+        const dLon = (lon2-lon1) * (Math.PI/180);
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*(Math.PI/180)) * Math.cos(lat2*(Math.PI/180)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    }
 </script>
 </body>
 </html>
