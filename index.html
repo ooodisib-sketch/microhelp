@@ -1,66 +1,153 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MicroHelp - Живая лента</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --p: #007AFF; --bg: #F2F2F7; --card: #FFFFFF; --text: #1C1C1E; --green: #34C759; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #EEE; position: relative; }
+        .btn { width: 100%; padding: 15px; border-radius: 15px; border: none; font-weight: 800; cursor: pointer; font-size: 14px; margin-top: 10px; transition: 0.2s; }
+        .btn-main { background: var(--p); color: white; }
+        .btn-ghost { background: #E5E5EA; color: var(--text); }
+        input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #DDD; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
+        .status-badge { font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; float: right; background: #E5F1FF; color: var(--p); }
+        .header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .screen { display: none; }
+        .active { display: block; }
+    </style>
+</head>
+<body>
+
+<div id="screen-auth" class="screen active">
+    <div class="container" style="text-align: center; margin-top: 80px;">
+        <h1 style="font-weight: 900; color: var(--p); font-size: 40px; margin-bottom: 10px;">MicroHelp</h1>
+        <p style="margin-bottom: 40px; opacity: 0.6;">Сервис мгновенной помощи</p>
+        <button class="btn btn-main" style="padding: 25px;" onclick="init('client')">🙋‍♂️ Я Заказчик</button>
+        <button class="btn btn-ghost" style="padding: 25px;" onclick="init('worker')">🛠 Я Исполнитель</button>
+    </div>
+</div>
+
+<div id="screen-app" class="screen">
+    <div class="header">
+        <b id="role-name">Загрузка...</b>
+        <span id="user-id-display" style="font-size: 10px; opacity: 0.5;"></span>
+        <button onclick="location.reload()" style="background:none; border:none; color:var(--p); font-weight:700;">Выйти</button>
+    </div>
+
+    <div class="container">
+        <div id="client-ui" style="display:none;">
+            <div class="card">
+                <h3 style="margin-top:0">Новое задание</h3>
+                <input id="title" placeholder="Что нужно сделать?">
+                <input id="price" type="number" placeholder="Бюджет (₽)">
+                <button class="btn btn-main" onclick="addTask()">Опубликовать</button>
+            </div>
+            <h4>Мои активные заказы</h4>
+        </div>
+
+        <div id="worker-ui" style="display:none;">
+            <h3 style="margin-top:0">Заказы рядом</h3>
+        </div>
+
+        <div id="task-list"></div>
+    </div>
+</div>
 
 <script>
-    // 1. Настройки (Возьми их в Supabase: Settings -> API)
-    const SUPABASE_URL = 'ТВОЙ_URL';
-    const SUPABASE_KEY = 'ТВОЙ_ANON_KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Инициализация базы данных (работает через публичные узлы)
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const tasks = gun.get('microhelp_tasks_v1');
+    
+    let myId = 'user_' + Math.random().toString(36).substr(2, 5);
+    let myRole = '';
 
-    let userId = 'user_' + Math.floor(Math.random() * 10000);
-    let userRole = '';
+    function init(role) {
+        myRole = role;
+        document.getElementById('screen-auth').classList.remove('active');
+        document.getElementById('screen-app').classList.add('active');
+        document.getElementById('role-name').innerText = role === 'client' ? 'Кабинет Заказчика' : 'Кабинет Исполнителя';
+        document.getElementById('user-id-display').innerText = 'ID: ' + myId;
+        
+        if(role === 'client') document.getElementById('client-ui').style.display = 'block';
+        else document.getElementById('worker-ui').style.display = 'block';
 
-    function selectRole(role) {
-        userRole = role;
-        document.getElementById('screen-auth').style.display = 'none';
-        document.getElementById('screen-app').style.display = 'block';
-        startRealtime();
-        renderTasks(); // Первичная загрузка
+        render();
     }
 
-    // 2. Реальное время (Real-time)
-    function startRealtime() {
-        supabase.channel('custom-all-channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-                console.log('Изменение в базе!', payload);
-                renderTasks();
-                if(payload.eventType === 'INSERT' && userRole === 'worker') playSound('new_task');
-            })
-            .subscribe();
+    function addTask() {
+        const title = document.getElementById('title').value;
+        const price = document.getElementById('price').value;
+        if(!title || !price) return alert('Заполните все поля');
+
+        const taskId = 'task_' + Date.now();
+        tasks.get(taskId).put({
+            id: taskId,
+            title: title,
+            price: price,
+            clientId: myId,
+            status: 'searching',
+            time: Date.now()
+        });
+
+        document.getElementById('title').value = '';
+        document.getElementById('price').value = '';
+        playSound();
     }
 
-    // 3. Функция загрузки заказов
-    async function renderTasks() {
-        const { data: tasks, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        if (error) return console.error(error);
+    function render() {
+        const list = document.getElementById('task-list');
+        
+        // Слушаем изменения в базе в реальном времени
+        tasks.map().on((data, id) => {
+            if (!data || !data.title) return;
 
-        const cList = document.getElementById('client-list');
-        const wFeed = document.getElementById('worker-feed');
-        cList.innerHTML = ''; wFeed.innerHTML = '';
+            // Проверяем, существует ли уже карточка на экране
+            let el = document.getElementById(id);
+            if (!el) {
+                el = document.createElement('div');
+                el.id = id;
+                el.className = 'card';
+                list.prepend(el); // Новые вверх
+            }
 
-        tasks.forEach(t => {
-            const card = `
-                <div class="card">
-                    <span class="status-badge">${t.status}</span>
-                    <b>${t.title}</b><br>${t.price} ₽
-                    ${userRole === 'client' && t.status === 'searching' ? `<button onclick="alert('Ждем исполнителя')">В поиске...</button>` : ''}
-                    ${userRole === 'worker' && t.status === 'searching' ? `<button class="btn btn-main" onclick="apply('${t.id}')">Откликнуться</button>` : ''}
-                </div>`;
-            
-            if (t.client_id === userId) cList.innerHTML += card;
-            if (t.status === 'searching') wFeed.innerHTML += card;
+            const isMyTask = data.clientId === myId;
+
+            // Отображаем задачи в зависимости от роли
+            if (myRole === 'worker' && data.status === 'searching') {
+                el.style.display = 'block';
+                el.innerHTML = `<span class="status-badge">Доступно</span><b>${data.title}</b><br>${data.price} ₽
+                                <button class="btn btn-main" onclick="takeTask('${id}')">Взять заказ</button>`;
+            } else if (myRole === 'client' && isMyTask) {
+                el.style.display = 'block';
+                const statusText = data.status === 'searching' ? 'Поиск...' : 'В работе';
+                el.innerHTML = `<span class="status-badge">${statusText}</span><b>${data.title}</b><br>${data.price} ₽`;
+            } else {
+                el.style.display = 'none';
+            }
         });
     }
 
-    // 4. Создание задачи
-    async function createTask() {
-        const title = document.getElementById('t-title').value;
-        const price = document.getElementById('t-price').value;
-        await supabase.from('tasks').insert([{ title, price, client_id: userId, status: 'searching' }]);
-        document.getElementById('t-title').value = '';
+    function takeTask(id) {
+        tasks.get(id).put({ status: 'active', workerId: myId });
+        alert('Вы взяли заказ! Свяжитесь с заказчиком (чат в разработке)');
     }
 
-    async function apply(id) {
-        await supabase.from('tasks').update({ status: 'active', worker_id: userId }).eq('id', id);
-        alert("Вы взяли заказ!");
+    function playSound() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start(); osc.stop(ctx.currentTime + 0.5);
     }
 </script>
+</body>
+</html>
