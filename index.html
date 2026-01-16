@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>МикроПомощь FINAL</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --p: #007AFF; --bg: #f2f2f7; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px; shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 12px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 15px; font-weight: 800; cursor: pointer; }
+        .btn-main { background: var(--p); color: white; }
+        #auth, #role, #app { display: none; max-width: 400px; margin: 0 auto; }
+        .show { display: block !important; }
+        .badge { font-size: 10px; background: #eee; padding: 4px 8px; border-radius: 5px; float: right; }
+    </style>
+</head>
+<body>
+
+<div id="auth" class="show">
+    <h1>Вход</h1>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="pass" placeholder="Пароль">
+    <button class="btn btn-main" onclick="handleAuth()">ВОЙТИ / СОЗДАТЬ</button>
+</div>
+
+<div id="role">
+    <h2>Кто вы?</h2>
+    <button class="btn btn-main" onclick="setRole('client')">🙋‍♂️ Я Заказчик</button>
+    <button class="btn btn-main" style="background:#34c759; margin-top:10px" onclick="setRole('worker')">🛠 Я Помощник</button>
+</div>
+
+<div id="app">
+    <div style="display:flex; justify-content:space-between; align-items:center">
+        <h2 id="u-name">...</h2>
+        <button onclick="auth.signOut().then(()=>location.reload())">Выход</button>
+    </div>
+    
+    <div id="client-ui" style="display:none">
+        <div class="card">
+            <input id="t-title" placeholder="Что нужно сделать?">
+            <input id="t-price" type="number" placeholder="Цена (₽)">
+            <button class="btn btn-main" onclick="createTask()">Создать заказ</button>
+        </div>
+        <h3>Мои заказы:</h3>
+        <div id="my-list"></div>
+    </div>
+
+    <div id="worker-ui" style="display:none">
+        <h3>Доступные заказы:</h3>
+        <div id="feed-list"></div>
+    </div>
+</div>
+
+<script>
+    // ИСПОЛЬЗУЕМ COMPAT SDK (самый стабильный способ)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBgNLqexeJE0hPOcW2EExSnL4QHMX6hVvI",
+        authDomain: "microhelp-953ca.firebaseapp.com",
+        projectId: "microhelp-953ca",
+        storageBucket: "microhelp-953ca.firebasestorage.app",
+        messagingSenderId: "966336795289",
+        appId: "1:966336795289:web:c5563125d06af5b0dcde08"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let me = null;
+    let myRole = '';
+
+    function handleAuth() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        auth.signInWithEmailAndPassword(email, pass).catch(() => {
+            auth.createUserWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+        });
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            me = user;
+            const doc = await db.collection("profiles").doc(user.uid).get();
+            if (doc.exists) {
+                myRole = doc.data().role;
+                showMain();
+            } else {
+                document.getElementById('auth').classList.remove('show');
+                document.getElementById('role').classList.add('show');
+            }
+        }
+    });
+
+    async function setRole(role) {
+        await db.collection("profiles").doc(me.uid).set({ 
+            role: role, 
+            name: me.email.split('@')[0] 
+        });
+        location.reload();
+    }
+
+    function showMain() {
+        document.getElementById('auth').classList.remove('show');
+        document.getElementById('role').classList.remove('show');
+        document.getElementById('app').classList.add('show');
+        document.getElementById('u-name').innerText = me.email.split('@')[0] + ` (${myRole})`;
+        
+        if(myRole === 'client') document.getElementById('client-ui').style.display = 'block';
+        else document.getElementById('worker-ui').style.display = 'block';
+        
+        loadTasks();
+    }
+
+    async function createTask() {
+        const title = document.getElementById('t-title').value;
+        const price = document.getElementById('t-price').value;
+        await db.collection("tasks").add({
+            title, price, 
+            client_id: me.uid, 
+            status: 'open',
+            createdAt: Date.now()
+        });
+        alert("Заказ создан!");
+    }
+
+    function loadTasks() {
+        db.collection("tasks").orderBy("createdAt", "desc").onSnapshot(snap => {
+            const myList = document.getElementById('my-list');
+            const feed = document.getElementById('feed-list');
+            myList.innerHTML = ''; feed.innerHTML = '';
+
+            snap.forEach(doc => {
+                const t = doc.data();
+                const card = `
+                    <div class="card">
+                        <span class="badge">${t.status}</span>
+                        <b>${t.title}</b><br>${t.price} ₽
+                        ${myRole === 'worker' && t.status === 'open' ? `<button class="btn btn-main" style="margin-top:10px" onclick="takeTask('${doc.id}')">Взять</button>` : ''}
+                    </div>`;
+                
+                if (t.client_id === me.uid) myList.innerHTML += card;
+                else if (t.status === 'open') feed.innerHTML += card;
+            });
+        });
+    }
+
+    async function takeTask(id) {
+        await db.collection("tasks").doc(id).update({ status: 'active', worker_id: me.uid });
+        alert("Вы взяли заказ!");
+    }
+</script>
+</body>
+</html>
