@@ -2737,183 +2737,132 @@ if (authData.user) {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
 <script>
-    // 1. ИНИЦИАЛИЗАЦИЯ SUPABASE
-    // ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА ВАШИ ИЗ SUPABASE SETTINGS -> API
+    // --- НАСТРОЙКИ (Вставьте свои данные здесь) ---
     const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NDEzNjAsImV4cCI6MjA4NDExNzM2MH0.lagPVLLopst3yx5eiuJchwOP4wJg49cEqmWZrNWxFrQ';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+    // --- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ---
     let state = {
         user: null,
-        profile: null,
-        selectedRole: 'customer', // для регистрации
-        currentRole: 'customer', // активная роль в приложении
-        orders: [],
-        map: null,
-        markers: []
+        selectedRegisterRole: 'customer',
+        map: null
     };
 
-    // 2. ФУНКЦИИ АУТЕНТИФИКАЦИИ
-    async function login() {
+    // --- СДЕЛАЕМ ФУНКЦИИ ДОСТУПНЫМИ ДЛЯ HTML (ОТКРЫВАЕМ ИХ) ---
+    
+    // Переключение вкладок Вход / Регистрация
+    window.switchAuthTab = function(tab) {
+        const tabs = document.querySelectorAll('.auth-tab');
+        const forms = document.querySelectorAll('.auth-form');
+        
+        tabs.forEach(t => t.classList.remove('active'));
+        forms.forEach(f => f.classList.remove('active'));
+
+        if (tab === 'login') {
+            tabs[0].classList.add('active');
+            document.getElementById('loginForm').classList.add('active');
+        } else {
+            tabs[1].classList.add('active');
+            document.getElementById('registerForm').classList.add('active');
+        }
+    };
+
+    // Выбор роли (Заказчик / Мастер)
+    window.selectRole = function(role) {
+        state.selectedRegisterRole = role;
+        const options = document.querySelectorAll('.role-option');
+        options.forEach(opt => opt.classList.remove('active'));
+        
+        if (role === 'customer') {
+            options[0].classList.add('active');
+        } else {
+            options[1].classList.add('active');
+        }
+    };
+
+    // Функция входа
+    window.login = async function() {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) throw error;
-            
-            await checkUser();
-            showToast("С возвращением!", "success");
-        } catch (error) {
-            showToast(error.message, "danger");
+            showToast("Вход выполнен!", "success");
+            checkUserStatus(); // Обновляем интерфейс
+        } catch (err) {
+            showToast(err.message, "danger");
         }
-    }
+    };
 
-    async function register() {
+    // Функция регистрации
+    window.register = async function() {
+        const name = document.getElementById('registerName').value;
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
-        const name = document.getElementById('registerName').value;
-        const confirmPass = document.getElementById('registerConfirmPassword').value;
+        const confirm = document.getElementById('registerConfirmPassword').value;
 
-        if (password !== confirmPass) return showToast("Пароли не совпадают", "danger");
+        if (password !== confirm) {
+            return showToast("Пароли не совпадают", "danger");
+        }
 
         try {
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
                 options: {
-                    data: { name: name, role: state.selectedRole }
+                    data: { name: name, role: state.selectedRegisterRole }
                 }
             });
 
             if (error) throw error;
-
-            if (data.user) {
-                showToast("Регистрация успешна! Проверьте почту или войдите.", "success");
-                switchAuthTab('login');
-            }
-        } catch (error) {
-            showToast(error.message, "danger");
+            showToast("Регистрация прошла успешно! Теперь войдите.", "success");
+            switchAuthTab('login');
+        } catch (err) {
+            showToast(err.message, "danger");
         }
-    }
+    };
 
-    // Проверка текущей сессии
-    async function checkUser() {
-        const { data: { user } } = await supabase.auth.getUser();
+    // Проверка, залогинен ли пользователь
+    async function checkUserStatus() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
             state.user = user;
-            // Получаем профиль из нашей таблицы (созданный триггером)
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-            
-            state.profile = profile;
-            state.currentRole = profile.role;
-            
             document.getElementById('authModal').classList.remove('active');
             initApp();
         }
     }
 
-    // 3. РАБОТА С ЗАКАЗАМИ
-    async function loadOrders() {
-        try {
-            // Загружаем через VIEW, которую мы создали в SQL
-            const { data, error } = await supabase
-                .from('order_details')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            state.orders = data;
-            renderOrders();
-            updateMarkers();
-        } catch (error) {
-            console.error("Ошибка загрузки заказов:", error);
+    // Инициализация приложения после входа
+    function initApp() {
+        if (!state.map) {
+            state.map = L.map('map').setView([55.75, 37.62], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
         }
-    }
-
-    async function createOrder(orderData) {
-        try {
-            const { error } = await supabase
-                .from('orders')
-                .insert([{
-                    title: orderData.title,
-                    description: orderData.description,
-                    price: parseInt(orderData.price),
-                    customer_id: state.user.id,
-                    address: orderData.address,
-                    location: `POINT(${orderData.lng} ${orderData.lat})` // Формат PostGIS
-                }]);
-
-            if (error) throw error;
-            showToast("Заказ опубликован!", "success");
-            loadOrders();
-        } catch (error) {
-            showToast(error.message, "danger");
-        }
-    }
-
-    // 4. ИНТЕРФЕЙСНЫЕ ФУНКЦИИ (UI)
-    function switchAuthTab(tab) {
-        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-        
-        if (tab === 'login') {
-            document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
-            document.getElementById('loginForm').classList.add('active');
-        } else {
-            document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
-            document.getElementById('registerForm').classList.add('active');
-        }
-    }
-
-    function selectRole(role) {
-        state.selectedRole = role;
-        document.querySelectorAll('.role-option').forEach(opt => {
-            opt.classList.toggle('active', opt.innerHTML.toLowerCase().includes(role === 'customer' ? 'заказчик' : 'мастер'));
-        });
+        // Здесь можно добавить загрузку заказов loadOrders()
     }
 
     function showToast(text, type) {
         Toastify({
             text: text,
             duration: 3000,
-            gravity: "top",
-            position: "right",
-            style: { background: type === 'danger' ? "#EF4444" : "#10B981" }
+            style: { background: type === "danger" ? "#EF4444" : "#10B981" }
         }).showToast();
     }
 
-    // 5. КАРТА
-    function initMap() {
-        if (state.map) return;
-        state.map = L.map('map').setView([55.75, 37.61], 11); // Москва по умолчанию
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-    }
+    // Запуск при загрузке
+    window.onload = checkUserStatus;
 
-    function initApp() {
-        initMap();
-        loadOrders();
-        
-        // Подписываемся на изменения в реальном времени
-        supabase
-            .channel('public:orders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-                loadOrders();
-            })
-            .subscribe();
-    }
-
-    // Запуск при загрузке страницы
-    window.onload = checkUser;
 </script>
 </body>
 </html>
+
 
 
 
