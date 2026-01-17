@@ -2,972 +2,203 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>МикроПомощь PRO</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --primary: #007AFF;
-            --primary-dark: #0056CC;
-            --secondary: #34C759;
-            --danger: #FF3B30;
-            --warning: #FF9500;
-            --background: #F2F2F7;
-            --surface: #FFFFFF;
-            --text-primary: #000000;
-            --text-secondary: #8E8E93;
-            --border: #C7C7CC;
-            --radius-lg: 30px;
-            --radius-md: 24px;
-            --radius-sm: 16px;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: var(--background);
-            color: var(--text-primary);
-            overflow: hidden;
-            height: 100vh;
-        }
-
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* Навигация */
-        .fab-container {
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; }
+        #map { height: 100vh; }
+        .controls {
             position: fixed;
             top: 20px;
-            left: 0;
-            right: 0;
+            right: 20px;
             z-index: 1000;
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            pointer-events: none;
-        }
-
-        .fab {
-            width: 56px;
-            height: 56px;
-            border-radius: 28px;
-            background: var(--surface);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow);
-            cursor: pointer;
-            pointer-events: auto;
-            transition: var(--transition);
-            font-size: 24px;
-            border: none;
-        }
-
-        .fab-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        /* Нижний лист */
-        .bottom-sheet {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 50vh;
-            background: var(--surface);
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
+            gap: 10px;
         }
-
-        .bottom-sheet.open {
-            transform: translateY(0);
-        }
-
-        .bottom-sheet-handle {
-            width: 36px;
-            height: 5px;
-            background: var(--border);
-            border-radius: 3px;
-            margin: 12px auto;
-        }
-
-        .bottom-sheet-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0 20px 20px;
-        }
-
-        /* Модальные окна */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            padding: 20px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--surface);
-            border-radius: var(--radius-lg);
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        .modal-footer {
-            padding: 20px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 12px;
-        }
-
-        /* Формы */
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .form-input, .form-textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            font-size: 16px;
-        }
-
         .btn {
-            padding: 12px 24px;
-            border-radius: var(--radius-md);
-            border: none;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .btn-primary {
-            background: var(--primary);
+            padding: 12px 20px;
+            background: #007AFF;
             color: white;
-        }
-
-        .btn-secondary {
-            background: var(--background);
-            color: var(--text-primary);
-        }
-
-        /* Список заданий */
-        .tasks-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .task-card {
-            background: var(--surface);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .task-title {
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
             font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
         }
-
-        .task-price {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        /* Сообщения */
-        #statusMessage {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--surface);
-            padding: 20px 30px;
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-            z-index: 3000;
+        .modal {
             display: none;
-            text-align: center;
-            max-width: 80%;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
         }
-
-        #statusMessage.active {
-            display: block;
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
         }
-
-        .hidden {
-            display: none !important;
-        }
+        .input { width: 100%; padding: 10px; margin: 10px 0; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     
-    <div class="fab-container">
-        <button class="fab" id="btnProfile" title="Профиль">👤</button>
-        <button class="fab fab-primary" id="btnCreateTask" title="Создать задание">➕</button>
-        <button class="fab" id="btnRefresh" title="Обновить">🔄</button>
+    <div class="controls">
+        <button class="btn" id="btnAuth">Войти</button>
+        <button class="btn" id="btnCreate">Создать задание</button>
     </div>
-
-    <div class="bottom-sheet" id="bottomSheet">
-        <div class="bottom-sheet-handle"></div>
-        <div class="bottom-sheet-content">
-            <h3 style="margin: 20px 0;">Доступные задания</h3>
-            <div class="tasks-list" id="tasksList">
-                <!-- Задания будут здесь -->
-            </div>
+    
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <h3>Вход в систему</h3>
+            <input type="email" id="authEmail" class="input" placeholder="Email">
+            <input type="password" id="authPassword" class="input" placeholder="Пароль">
+            <select id="userRole" class="input">
+                <option value="customer">Заказчик</option>
+                <option value="master">Мастер</option>
+            </select>
+            <button class="btn" id="btnLogin">Войти</button>
+            <button class="btn" style="background: #666;" id="btnCloseAuth">Закрыть</button>
         </div>
     </div>
-
-    <!-- Модалка авторизации -->
-    <div class="modal-overlay" id="authModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Вход / Регистрация</h3>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="authEmail" placeholder="test@example.com">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Пароль</label>
-                    <input type="password" class="form-input" id="authPassword" placeholder="пароль">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Роль</label>
-                    <select class="form-input" id="userRole">
-                        <option value="customer">Заказчик</option>
-                        <option value="master">Мастер</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="btnLogin">Войти</button>
-                <button class="btn btn-secondary" id="btnRegister">Зарегистрироваться</button>
-            </div>
+    
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <h3>Новое задание</h3>
+            <input type="text" id="taskTitle" class="input" placeholder="Название">
+            <textarea id="taskDesc" class="input" placeholder="Описание" rows="3"></textarea>
+            <input type="number" id="taskBudget" class="input" placeholder="Бюджет (₽)">
+            <button class="btn" id="btnCreateTask">Создать</button>
+            <button class="btn" style="background: #666;" id="btnCloseTask">Закрыть</button>
         </div>
     </div>
-
-    <!-- Модалка создания задания -->
-    <div class="modal-overlay" id="createTaskModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Новое задание</h3>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Название</label>
-                    <input type="text" class="form-input" id="taskTitle" placeholder="Помочь с переездом">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Описание</label>
-                    <textarea class="form-input" id="taskDescription" placeholder="Подробное описание..." rows="3"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Бюджет (₽)</label>
-                    <input type="number" class="form-input" id="taskBudget" placeholder="1000" min="100">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Категория</label>
-                    <select class="form-input" id="taskCategory">
-                        <option value="transport">🚚 Транспорт</option>
-                        <option value="repair">🔧 Ремонт</option>
-                        <option value="cleaning">🧹 Уборка</option>
-                        <option value="delivery">📦 Доставка</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="btnSubmitTask">Создать</button>
-                <button class="btn btn-secondary" id="btnCancelTask">Отмена</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модалка профиля -->
-    <div class="modal-overlay" id="profileModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Профиль</h3>
-            </div>
-            <div class="modal-body">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="width: 80px; height: 80px; background: var(--primary); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: white;">
-                        👤
-                    </div>
-                    <h4 id="profileName">Пользователь</h4>
-                    <div id="profileEmail">email@example.com</div>
-                    <div style="margin-top: 10px;">
-                        <span id="profileRole">Заказчик</span> • 
-                        <span>Рейтинг: <span id="profileRating">5.0</span> ⭐</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Телефон</label>
-                    <input type="tel" class="form-input" id="profilePhone" placeholder="+7 (999) 123-45-67">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="btnSaveProfile">Сохранить</button>
-                <button class="btn btn-secondary" id="btnLogout">Выйти</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Статус сообщение -->
-    <div id="statusMessage"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Конфигурация Supabase
-        const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-        
-        // Инициализация
         let map = null;
         let user = null;
-        let userRole = 'customer';
         let tasks = [];
-        let markers = [];
-        let supabase = null;
-        
-        // Временное хранилище (если Supabase не работает)
-        const tempStorage = {
-            profiles: JSON.parse(localStorage.getItem('microhelp_profiles')) || [],
-            tasks: JSON.parse(localStorage.getItem('microhelp_tasks')) || [],
-            reviews: JSON.parse(localStorage.getItem('microhelp_reviews')) || []
-        };
-        
-        // Показать сообщение
-        function showMessage(text, type = 'info') {
-            const msg = document.getElementById('statusMessage');
-            msg.textContent = text;
-            msg.style.background = type === 'error' ? '#FF3B30' : 
-                                 type === 'success' ? '#34C759' : '#007AFF';
-            msg.style.color = 'white';
-            msg.classList.add('active');
-            setTimeout(() => msg.classList.remove('active'), 3000);
-        }
         
         // Инициализация карты
         function initMap() {
-            try {
-                map = L.map('map').setView([55.7558, 37.6173], 12);
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap',
-                    maxZoom: 19
-                }).addTo(map);
-                
-                // Получение местоположения
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        position => {
-                            const { latitude, longitude } = position.coords;
-                            map.setView([latitude, longitude], 14);
-                            L.marker([latitude, longitude])
-                                .addTo(map)
-                                .bindPopup('Вы здесь')
-                                .openPopup();
-                        },
-                        () => {
-                            console.log('Геолокация недоступна');
-                        }
-                    );
-                }
-                
-                showMessage('Карта загружена!', 'success');
-            } catch (error) {
-                showMessage('Ошибка загрузки карты', 'error');
-                console.error(error);
-            }
-        }
-        
-        // Инициализация Supabase
-        async function initSupabase() {
-            try {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                
-                // Проверка подключения
-                const { data, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    showMessage('Используется локальное хранилище', 'warning');
-                    return false;
-                }
-                
-                if (data.session) {
-                    user = data.session.user;
-                    await loadUserProfile();
-                    showMainUI();
-                } else {
-                    showAuthModal();
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Supabase error:', error);
-                showMessage('Используется локальное хранилище', 'warning');
-                return false;
-            }
-        }
-        
-        // Локальная авторизация
-        function localAuth(email, password, role, isRegister = false) {
-            if (isRegister) {
-                // Регистрация
-                const existingUser = tempStorage.profiles.find(p => p.email === email);
-                if (existingUser) {
-                    showMessage('Пользователь уже существует', 'error');
-                    return false;
-                }
-                
-                const newUser = {
-                    id: 'user_' + Date.now(),
-                    email,
-                    role,
-                    rating: 5.0,
-                    phone: '',
-                    created_at: new Date().toISOString()
-                };
-                
-                tempStorage.profiles.push(newUser);
-                localStorage.setItem('microhelp_profiles', JSON.stringify(tempStorage.profiles));
-                
-                user = newUser;
-                userRole = role;
-                showMessage('Регистрация успешна!', 'success');
-                return true;
-            } else {
-                // Вход
-                const foundUser = tempStorage.profiles.find(p => p.email === email);
-                if (foundUser) {
-                    user = foundUser;
-                    userRole = foundUser.role;
-                    showMessage('Вход выполнен', 'success');
-                    return true;
-                } else {
-                    showMessage('Пользователь не найден', 'error');
-                    return false;
-                }
-            }
-        }
-        
-        // Загрузка профиля
-        async function loadUserProfile() {
-            if (!supabase || !user) {
-                if (user && user.id) {
-                    const foundUser = tempStorage.profiles.find(p => p.id === user.id);
-                    if (foundUser) {
-                        userRole = foundUser.role;
-                    }
-                }
-                return;
-            }
+            map = L.map('map').setView([55.7558, 37.6173], 12);
             
-            try {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
-                    
-                if (data) {
-                    userRole = data.role;
-                }
-            } catch (error) {
-                console.error('Profile load error:', error);
-            }
-        }
-        
-        // Показать основной интерфейс
-        function showMainUI() {
-            document.getElementById('authModal').classList.remove('active');
-            document.getElementById('bottomSheet').classList.add('open');
-            loadTasks();
-            updateUIForRole();
-        }
-        
-        // Обновить UI по роли
-        function updateUIForRole() {
-            const btnCreateTask = document.getElementById('btnCreateTask');
-            if (userRole === 'customer') {
-                btnCreateTask.classList.remove('hidden');
-            } else {
-                btnCreateTask.classList.add('hidden');
-            }
-        }
-        
-        // Загрузка заданий
-        async function loadTasks() {
-            if (supabase && user) {
-                try {
-                    let query = supabase.from('tasks').select('*');
-                    
-                    if (userRole === 'customer') {
-                        query = query.eq('customer_id', user.id);
-                    } else {
-                        query = query.eq('status', 'open');
-                    }
-                    
-                    const { data, error } = await query;
-                    
-                    if (data) {
-                        tasks = data;
-                    }
-                } catch (error) {
-                    console.error('Tasks load error:', error);
-                }
-            }
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
             
-            // Всегда используем локальные данные как fallback
-            tasks = tasks.concat(tempStorage.tasks.filter(t => 
-                (userRole === 'customer' && t.customer_id === user?.id) ||
-                (userRole === 'master' && t.status === 'open')
-            ));
-            
-            displayTasks();
-            updateTaskMarkers();
-        }
-        
-        // Отображение заданий
-        function displayTasks() {
-            const tasksList = document.getElementById('tasksList');
-            tasksList.innerHTML = '';
-            
-            if (tasks.length === 0) {
-                tasksList.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">Заданий пока нет</div>';
-                return;
-            }
-            
-            tasks.forEach(task => {
-                const div = document.createElement('div');
-                div.className = 'task-card';
-                
-                const categoryIcons = {
-                    'transport': '🚚',
-                    'repair': '🔧',
-                    'cleaning': '🧹',
-                    'delivery': '📦'
-                };
-                
-                div.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                        <div>
-                            <div style="font-weight: 600; margin-bottom: 5px;">
-                                ${categoryIcons[task.category] || '❓'} ${task.title}
-                            </div>
-                            <div style="font-size: 14px; color: var(--text-secondary);">
-                                ${task.address || 'Адрес не указан'}
-                            </div>
-                        </div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--primary);">
-                            ${task.budget}₽
-                        </div>
-                    </div>
-                    <div style="font-size: 14px; margin-bottom: 10px;">
-                        ${task.description}
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        ${userRole === 'master' && task.status === 'open' ? 
-                            `<button onclick="takeTask('${task.id}')" style="flex:1; padding: 8px; background: var(--primary); color: white; border: none; border-radius: 8px;">Взять задание</button>` : ''}
-                        ${userRole === 'customer' && task.status === 'open' ? 
-                            `<button onclick="cancelTask('${task.id}')" style="flex:1; padding: 8px; background: var(--danger); color: white; border: none; border-radius: 8px;">Отменить</button>` : ''}
-                    </div>
-                `;
-                
-                tasksList.appendChild(div);
-            });
-        }
-        
-        // Обновить маркеры на карте
-        function updateTaskMarkers() {
-            // Удалить старые маркеры
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
-            
-            // Добавить новые
-            tasks.forEach(task => {
-                if (task.latitude && task.longitude) {
-                    const marker = L.marker([task.latitude, task.longitude])
+            // Получение местоположения
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const { latitude, longitude } = pos.coords;
+                    map.setView([latitude, longitude], 14);
+                    L.marker([latitude, longitude])
                         .addTo(map)
-                        .bindPopup(`<b>${task.title}</b><br>${task.budget}₽`);
-                    markers.push(marker);
-                }
+                        .bindPopup('Вы здесь')
+                        .openPopup();
+                });
+            }
+            
+            // Добавить демо-задания
+            addDemoTasks();
+        }
+        
+        // Добавить демо-задания
+        function addDemoTasks() {
+            const demoTasks = [
+                { lat: 55.7558, lng: 37.6173, title: 'Помочь с переездом', budget: 5000 },
+                { lat: 55.7512, lng: 37.6184, title: 'Починить кран', budget: 2000 },
+                { lat: 55.7580, lng: 37.6160, title: 'Доставить документы', budget: 1500 }
+            ];
+            
+            demoTasks.forEach(task => {
+                L.marker([task.lat, task.lng])
+                    .addTo(map)
+                    .bindPopup(`<b>${task.title}</b><br>${task.budget}₽<br><button onclick="takeTask()">Взять задание</button>`);
             });
+        }
+        
+        // Взять задание
+        function takeTask() {
+            alert('Задание взято в работу! В реальном приложении здесь будет связь с сервером.');
         }
         
         // Создать задание
-        async function createTask() {
+        function createTask() {
             const title = document.getElementById('taskTitle').value;
-            const description = document.getElementById('taskDescription').value;
+            const desc = document.getElementById('taskDesc').value;
             const budget = document.getElementById('taskBudget').value;
-            const category = document.getElementById('taskCategory').value;
             
-            if (!title || !description || !budget) {
-                showMessage('Заполните все поля', 'error');
+            if (!title || !budget) {
+                alert('Заполните название и бюджет');
                 return;
             }
             
-            const taskData = {
-                id: 'task_' + Date.now(),
-                title,
-                description,
-                budget: parseInt(budget),
-                category,
-                customer_id: user.id,
-                status: 'open',
-                created_at: new Date().toISOString(),
-                latitude: map.getCenter().lat,
-                longitude: map.getCenter().lng,
-                address: 'Москва, Россия'
-            };
-            
-            if (supabase && user) {
-                try {
-                    const { error } = await supabase
-                        .from('tasks')
-                        .insert([taskData]);
-                        
-                    if (error) throw error;
-                } catch (error) {
-                    console.error('Task create error:', error);
-                }
-            }
-            
-            // Сохранить локально
-            tempStorage.tasks.push(taskData);
-            localStorage.setItem('microhelp_tasks', JSON.stringify(tempStorage.tasks));
-            
-            // Добавить маркер
-            L.marker([taskData.latitude, taskData.longitude])
+            const center = map.getCenter();
+            L.marker([center.lat, center.lng])
                 .addTo(map)
-                .bindPopup(`<b>${title}</b><br>${budget}₽`)
+                .bindPopup(`<b>${title}</b><br>${budget}₽<br>${desc}`)
                 .openPopup();
             
-            document.getElementById('createTaskModal').classList.remove('active');
-            showMessage('Задание создано!', 'success');
-            loadTasks();
+            document.getElementById('taskModal').classList.remove('active');
+            alert('Задание создано!');
+            
+            // Очистить форму
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskBudget').value = '';
         }
         
-        // Взять задание (для мастера)
-        function takeTask(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            if (confirm(`Взять задание "${task.title}" за ${task.budget}₽?`)) {
-                task.status = 'in_progress';
-                task.master_id = user.id;
-                
-                // Обновить локально
-                const index = tempStorage.tasks.findIndex(t => t.id === taskId);
-                if (index !== -1) {
-                    tempStorage.tasks[index] = task;
-                    localStorage.setItem('microhelp_tasks', JSON.stringify(tempStorage.tasks));
-                }
-                
-                showMessage('Задание взято в работу!', 'success');
-                loadTasks();
-            }
-        }
-        
-        // Отменить задание
-        function cancelTask(taskId) {
-            if (confirm('Отменить задание?')) {
-                const task = tasks.find(t => t.id === taskId);
-                if (task) {
-                    task.status = 'cancelled';
-                    
-                    // Обновить локально
-                    const index = tempStorage.tasks.findIndex(t => t.id === taskId);
-                    if (index !== -1) {
-                        tempStorage.tasks[index] = task;
-                        localStorage.setItem('microhelp_tasks', JSON.stringify(tempStorage.tasks));
-                    }
-                    
-                    showMessage('Задание отменено', 'info');
-                    loadTasks();
-                }
-            }
-        }
-        
-        // Вход
-        async function login() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            const role = document.getElementById('userRole').value;
-            
-            if (!email || !password) {
-                showMessage('Заполните все поля', 'error');
-                return;
-            }
-            
-            if (supabase) {
-                try {
-                    const { data, error } = await supabase.auth.signInWithPassword({
-                        email,
-                        password
-                    });
-                    
-                    if (error) {
-                        // Попробовать локальную авторизацию
-                        if (localAuth(email, password, role, false)) {
-                            showMainUI();
-                        }
-                    } else {
-                        user = data.user;
-                        userRole = role;
-                        showMainUI();
-                    }
-                } catch (error) {
-                    console.error('Login error:', error);
-                    // Локальная авторизация как fallback
-                    if (localAuth(email, password, role, false)) {
-                        showMainUI();
-                    }
-                }
-            } else {
-                // Только локальная авторизация
-                if (localAuth(email, password, role, false)) {
-                    showMainUI();
-                }
-            }
-        }
-        
-        // Регистрация
-        async function register() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            const role = document.getElementById('userRole').value;
-            
-            if (!email || !password) {
-                showMessage('Заполните все поля', 'error');
-                return;
-            }
-            
-            if (supabase) {
-                try {
-                    const { data, error } = await supabase.auth.signUp({
-                        email,
-                        password
-                    });
-                    
-                    if (error) {
-                        // Локальная регистрация
-                        if (localAuth(email, password, role, true)) {
-                            showMainUI();
-                        }
-                    } else {
-                        user = data.user;
-                        userRole = role;
-                        
-                        // Создать профиль в Supabase
-                        try {
-                            await supabase.from('profiles').insert([{
-                                id: user.id,
-                                email,
-                                role,
-                                created_at: new Date().toISOString()
-                            }]);
-                        } catch (profileError) {
-                            console.error('Profile creation error:', profileError);
-                        }
-                        
-                        showMessage('Регистрация успешна! Проверьте email', 'success');
-                        showMainUI();
-                    }
-                } catch (error) {
-                    console.error('Register error:', error);
-                    // Локальная регистрация
-                    if (localAuth(email, password, role, true)) {
-                        showMainUI();
-                    }
-                }
-            } else {
-                // Только локальная регистрация
-                if (localAuth(email, password, role, true)) {
-                    showMainUI();
-                }
-            }
-        }
-        
-        // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Инициализация карты
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
             initMap();
             
-            // Инициализация Supabase
-            const supabaseConnected = await initSupabase();
-            
-            if (!supabaseConnected) {
-                // Показать демо-данные
-                showAuthModal();
-                
-                // Создать демо-задания если их нет
-                if (tempStorage.tasks.length === 0) {
-                    const demoTasks = [
-                        {
-                            id: 'task_1',
-                            title: 'Помочь с переездом',
-                            description: 'Нужно перевезти вещи из офиса в новое помещение',
-                            budget: 5000,
-                            category: 'transport',
-                            customer_id: 'demo_customer',
-                            status: 'open',
-                            created_at: new Date().toISOString(),
-                            latitude: 55.7558,
-                            longitude: 37.6173,
-                            address: 'Москва, Тверская ул.'
-                        },
-                        {
-                            id: 'task_2',
-                            title: 'Починить кран на кухне',
-                            description: 'Течет кран на кухне, нужен сантехник',
-                            budget: 2000,
-                            category: 'repair',
-                            customer_id: 'demo_customer2',
-                            status: 'open',
-                            created_at: new Date().toISOString(),
-                            latitude: 55.7512,
-                            longitude: 37.6184,
-                            address: 'Москва, Арбат'
-                        }
-                    ];
-                    
-                    tempStorage.tasks = demoTasks;
-                    localStorage.setItem('microhelp_tasks', JSON.stringify(tempStorage.tasks));
-                    
-                    // Добавить маркеры на карту
-                    demoTasks.forEach(task => {
-                        L.marker([task.latitude, task.longitude])
-                            .addTo(map)
-                            .bindPopup(`<b>${task.title}</b><br>${task.budget}₽`);
-                    });
-                }
-            }
-            
             // Обработчики событий
-            document.getElementById('btnLogin').addEventListener('click', login);
-            document.getElementById('btnRegister').addEventListener('click', register);
+            document.getElementById('btnAuth').addEventListener('click', function() {
+                document.getElementById('authModal').classList.add('active');
+            });
             
-            document.getElementById('btnCreateTask').addEventListener('click', function() {
-                if (user) {
-                    document.getElementById('createTaskModal').classList.add('active');
-                } else {
-                    showMessage('Сначала войдите в систему', 'error');
-                    showAuthModal();
+            document.getElementById('btnCreate').addEventListener('click', function() {
+                document.getElementById('taskModal').classList.add('active');
+            });
+            
+            document.getElementById('btnLogin').addEventListener('click', function() {
+                const email = document.getElementById('authEmail').value;
+                const role = document.getElementById('userRole').value;
+                
+                if (email) {
+                    user = { email: email, role: role };
+                    alert(`Добро пожаловать, ${role === 'customer' ? 'Заказчик' : 'Мастер'}!`);
+                    document.getElementById('authModal').classList.remove('active');
+                    document.getElementById('btnAuth').textContent = email;
                 }
             });
             
-            document.getElementById('btnSubmitTask').addEventListener('click', createTask);
-            document.getElementById('btnCancelTask').addEventListener('click', function() {
-                document.getElementById('createTaskModal').classList.remove('active');
+            document.getElementById('btnCreateTask').addEventListener('click', createTask);
+            
+            document.getElementById('btnCloseAuth').addEventListener('click', function() {
+                document.getElementById('authModal').classList.remove('active');
             });
             
-            document.getElementById('btnRefresh').addEventListener('click', loadTasks);
-            
-            document.getElementById('btnProfile').addEventListener('click', function() {
-                if (user) {
-                    document.getElementById('profileName').textContent = user.email || 'Пользователь';
-                    document.getElementById('profileEmail').textContent = user.email || '';
-                    document.getElementById('profileRole').textContent = userRole === 'customer' ? 'Заказчик' : 'Мастер';
-                    document.getElementById('profileModal').classList.add('active');
-                } else {
-                    showAuthModal();
-                }
+            document.getElementById('btnCloseTask').addEventListener('click', function() {
+                document.getElementById('taskModal').classList.remove('active');
             });
             
-            document.getElementById('btnSaveProfile').addEventListener('click', function() {
-                showMessage('Профиль сохранен', 'success');
-                document.getElementById('profileModal').classList.remove('active');
-            });
-            
-            document.getElementById('btnLogout').addEventListener('click', function() {
-                user = null;
-                userRole = 'customer';
-                showMessage('Вы вышли из системы', 'info');
-                document.getElementById('profileModal').classList.remove('active');
-                showAuthModal();
-            });
-            
-            // Закрытие модалок по клику вне их
-            document.querySelectorAll('.modal-overlay').forEach(overlay => {
-                overlay.addEventListener('click', function(e) {
+            // Закрытие модалок по клику вне
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
                     if (e.target === this) {
                         this.classList.remove('active');
                     }
                 });
             });
-            
-            // Демо вход для тестирования
-            setTimeout(() => {
-                if (!user) {
-                    showMessage('Добро пожаловать! Для теста используйте: email: test@example.com, пароль: любой', 'info');
-                }
-            }, 1000);
         });
     </script>
 </body>
