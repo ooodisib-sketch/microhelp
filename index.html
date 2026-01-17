@@ -1,383 +1,1373 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>МикроПомощь PRO | Система Рейтинга</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroHelp - Карта заказов</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--text); }
-        
-        .top-nav { position: fixed; top: 20px; left: 0; right: 0; z-index: 5000; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; }
-        .circle-btn { width: 56px; height: 56px; background: white; border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.15); pointer-events: auto; font-size: 24px; cursor: pointer; border: none; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        #main-layout { display: flex; flex-direction: column; height: 100vh; }
-        #map-container { height: 40%; width: 100%; position: relative; z-index: 1; }
-        #map { height: 100%; width: 100%; }
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --primary-light: #818CF8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-light: #FFFFFF;
+            --bg-dark: #0F172A;
+            --map-bg-light: #F8FAFC;
+            --map-bg-dark: #1E293B;
+        }
 
-        #content-container { height: 60%; background: var(--bg); border-top-left-radius: 30px; border-top-right-radius: 30px; margin-top: -30px; z-index: 100; position: relative; overflow-y: auto; padding: 25px 20px; box-shadow: 0 -15px 30px rgba(0,0,0,0.08); }
+        [data-theme="light"] {
+            --bg-color: var(--bg-light);
+            --text-color: #1E293B;
+            --map-bg: var(--map-bg-light);
+        }
 
-        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.02); }
-        .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
-        
-        .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px; transition: 0.2s; }
-        .btn-p { background: var(--p); color: white; }
-        .btn-o { background: #F2F2F7; color: var(--p); }
-        .btn-g { background: var(--green); color: white; }
+        [data-theme="dark"] {
+            --bg-color: var(--bg-dark);
+            --text-color: #F1F5F9;
+            --map-bg: var(--map-bg-dark);
+        }
 
-        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
-        .overlay.active { transform: translateY(0); }
-        .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'SF Pro Display', -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F2F2F7; }
-        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; font-size: 14px; }
-        .msg.me { background: var(--p); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg.other { background: white; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .app-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
 
-        .rating-star { font-size: 28px; color: #DDD; cursor: pointer; transition: 0.2s; }
-        .rating-star.active { color: var(--orange); }
+        /* Панель сбоку */
+        .side-panel {
+            width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateX(0);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        
-        .stat-box { display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 15px; margin: 15px 0; }
-        .stat-item { text-align: center; }
-        .stat-val { display: block; font-weight: 800; font-size: 18px; color: var(--p); }
-        .stat-lab { font-size: 10px; opacity: 0.5; text-transform: uppercase; }
+        [data-theme="dark"] .side-panel {
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .side-panel.hidden {
+            transform: translateX(-100%);
+        }
+
+        .panel-toggle {
+            position: absolute;
+            right: -50px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            z-index: 1001;
+            transition: all 0.3s;
+        }
+
+        .panel-toggle:hover {
+            transform: scale(1.1);
+            background: var(--primary-dark);
+        }
+
+        /* Заголовок панели */
+        .panel-header {
+            padding: 30px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(20px, 20px); }
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Переключатель ролей */
+        .role-switcher {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 4px;
+            margin: 20px 30px;
+            display: flex;
+            backdrop-filter: blur(10px);
+        }
+
+        .role-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .role-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Контент панели */
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        /* Список заказов */
+        .orders-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .order-card {
+            background: var(--bg-color);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .order-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .order-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.2);
+        }
+
+        .order-card.active {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .order-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            flex: 1;
+        }
+
+        .order-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--success);
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .order-meta {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #64748B;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .order-description {
+            color: var(--text-color);
+            opacity: 0.8;
+            line-height: 1.5;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* Карта */
+        .map-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--map-bg);
+            transition: background 0.3s;
+        }
+
+        /* Уникальный стиль для тайлов карты */
+        .custom-tile-layer {
+            filter: saturate(1.2) contrast(1.1) brightness(1.05);
+        }
+
+        [data-theme="dark"] .custom-tile-layer {
+            filter: invert(1) hue-rotate(180deg) saturate(1.5) brightness(0.8) contrast(1.2);
+        }
+
+        /* Кастомные элементы управления картой */
+        .map-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .map-control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: none;
+            color: var(--primary);
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-theme="dark"] .map-control-btn {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        .map-control-btn:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 40px rgba(79, 70, 229, 0.2);
+        }
+
+        .map-control-btn.pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3); }
+            50% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.6); }
+            100% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3); }
+        }
+
+        /* Поиск */
+        .search-container {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-width: 90%;
+            z-index: 1000;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 20px 60px 20px 30px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            font-size: 16px;
+            color: var(--text-color);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        [data-theme="dark"] .search-input {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* Уникальные маркеры */
+        .custom-marker {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            transform-origin: center;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+
+        .marker-order {
+            background: linear-gradient(135deg, var(--warning) 0%, #F59E0B 100%);
+        }
+
+        .marker-order::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            z-index: -1;
+            animation: pulseRing 2s infinite;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .marker-customer {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .marker-master {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        }
+
+        /* Информационное окно */
+        .map-info {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="dark"] .map-info {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .info-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .info-close:hover {
+            opacity: 1;
+        }
+
+        /* Анимации */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(79, 70, 229, 0.3);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Скелетоны */
+        .skeleton {
+            background: linear-gradient(90deg, 
+                rgba(255, 255, 255, 0.1) 25%, 
+                rgba(255, 255, 255, 0.2) 50%, 
+                rgba(255, 255, 255, 0.1) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 10px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .side-panel {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .side-panel {
+                width: 100%;
+                height: 60vh;
+                position: absolute;
+                bottom: 0;
+                border-right: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .side-panel.hidden {
+                transform: translateY(100%);
+            }
+            
+            .panel-toggle {
+                right: 20px;
+                top: -60px;
+            }
+            
+            .map-container {
+                height: 40vh;
+            }
+            
+            .search-container {
+                width: 90%;
+                top: 20px;
+            }
+            
+            .map-controls {
+                top: 20px;
+                right: 20px;
+            }
+            
+            .map-control-btn {
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* Уникальные эффекты */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .glow {
+            filter: drop-shadow(0 0 20px var(--primary-light));
+        }
+
+        .neon-border {
+            border: 2px solid var(--primary);
+            box-shadow: 
+                0 0 10px var(--primary-light),
+                inset 0 0 10px var(--primary-light);
+        }
+
+        /* 3D эффект для карты */
+        .map-3d {
+            perspective: 1000px;
+        }
+
+        .map-3d .leaflet-tile-pane {
+            transform-style: preserve-3d;
+        }
+
+        /* Анимированный фон */
+        .animated-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(79, 70, 229, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
     </style>
 </head>
 <body>
-
-<div id="toast"></div>
-
-<div class="top-nav" id="ui-controls" style="display:none">
-    <button class="circle-btn" onclick="openOverlay('ov-create')" id="btn-add">➕</button>
-    <button class="circle-btn" onclick="openOverlay('ov-profile')">👤</button>
-</div>
-
-<div id="scr-auth" style="position:fixed; inset:0; background:white; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center;">
-    <div style="font-size: 60px; margin-bottom: 10px;">🤝</div>
-    <h1 style="font-size: 34px; font-weight: 900; margin: 0; color: var(--p);">MicroHelp PRO</h1>
-    <p style="color: #8E8E93; margin: 10px 0 40px 0;">Надежный сервис взаимопомощи</p>
-    <button class="btn btn-p" onclick="enter('client')">Заказать услугу</button>
-    <button class="btn btn-o" onclick="enter('worker')" style="margin-top:12px;">Стать исполнителем</button>
-</div>
-
-<div id="main-layout" style="display:none">
-    <div id="map-container"><div id="map"></div></div>
-    <div id="content-container">
-        <h2 style="margin: 0 0 20px 0; font-weight: 800; letter-spacing: -0.5px;">Задания поблизости</h2>
-        <div id="list-feed"></div>
-    </div>
-</div>
-
-<div id="ov-profile" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Мой профиль</div>
-    <div style="padding:20px; overflow-y:auto;">
-        <div class="card" style="text-align:center;">
-            <div style="font-size:50px;">👤</div>
-            <h2 id="p-name" style="margin:5px 0;">Имя...</h2>
+    <div class="animated-bg"></div>
+    
+    <div class="app-container">
+        <!-- Боковая панель -->
+        <div class="side-panel" id="sidePanel">
+            <button class="panel-toggle" onclick="toggleSidePanel()">
+                <i class="fas fa-chevron-left" id="panelToggleIcon"></i>
+            </button>
             
-            <div class="stat-box">
-                <div class="stat-item">
-                    <span class="stat-val" id="p-rating-val">5.0</span>
-                    <span class="stat-lab">Рейтинг</span>
+            <div class="panel-header">
+                <div class="app-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-hands-helping"></i>
+                    </div>
+                    <div class="logo-text">MicroHelp</div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-val" id="p-done-val">0</span>
-                    <span class="stat-lab">Заказов</span>
+                
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div>
+                        <div style="font-weight: 600;" id="userName">Гость</div>
+                        <div style="font-size: 12px; opacity: 0.8;" id="userRole">Заказчик</div>
+                    </div>
                 </div>
             </div>
-            <div style="font-size:11px; opacity:0.4;">ID: <span id="p-id"></span></div>
-        </div>
-        
-        <h3>История и активность</h3>
-        <div id="p-my-orders"></div>
-
-        <h3 style="margin-top:25px;">Отзывы</h3>
-        <div id="p-reviews"></div>
-    </div>
-</div>
-
-<div id="ov-create" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Создать заказ</div>
-    <div style="padding:20px; overflow-y:auto;">
-        <button class="btn btn-o" onclick="startPicking()" id="pick-btn" style="border: 2px dashed var(--p);">📍 Указать точку на карте</button>
-        <div id="form-fields" style="margin-top:20px; opacity:0.3; pointer-events:none;">
-            <input id="c-title" placeholder="Что нужно сделать?" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box;">
-            <textarea id="c-desc" placeholder="Детальное описание..." rows="4" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box; font-family:inherit;"></textarea>
-            <input id="c-price" type="number" placeholder="Бюджет (₽)" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box;">
-            <button class="btn btn-p" onclick="createTask()">Разместить задание</button>
-        </div>
-    </div>
-</div>
-
-<div id="ov-review" class="overlay" style="background:rgba(0,0,0,0.7); justify-content:center; align-items:center;">
-    <div class="card" style="width:85%; text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
-        <h3 style="margin:0;">Оцените партнера</h3>
-        <p style="font-size:12px; opacity:0.6; margin:10px 0;">Ваш отзыв влияет на рейтинг пользователя</p>
-        <div style="margin:15px 0;">
-            <span class="rating-star" data-val="1" onclick="setStars(1)">★</span>
-            <span class="rating-star" data-val="2" onclick="setStars(2)">★</span>
-            <span class="rating-star" data-val="3" onclick="setStars(3)">★</span>
-            <span class="rating-star" data-val="4" onclick="setStars(4)">★</span>
-            <span class="rating-star" data-val="5" onclick="setStars(5)">★</span>
-        </div>
-        <textarea id="rev-text" placeholder="Комментарий к отзыву..." style="width:100%; padding:12px; border-radius:12px; border:1px solid #EEE; margin-bottom:15px;"></textarea>
-        <button class="btn btn-p" onclick="submitReview()">Подтвердить оценку</button>
-    </div>
-</div>
-
-<div id="ov-chat" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> <span id="chat-title">Чат</span></div>
-    <div id="chat-box"></div>
-    <div style="padding:20px; background:white; display:flex; gap:10px; border-top:1px solid #EEE;">
-        <input id="chat-inp" placeholder="Ваше сообщение..." style="margin:0; flex:1; border:none; font-size:16px; outline:none;">
-        <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding:0 20px;">➤</button>
-    </div>
-</div>
-
-<script>
-    const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
-    const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-    const _supabase = supabase.createClient(SB_URL, SB_KEY);
-
-    let u = { id: localStorage.getItem('mh_id') || 'u'+Math.floor(Math.random()*90000), role: '', name: '', lat: 55.75, lon: 37.61 };
-    localStorage.setItem('mh_id', u.id);
-
-    let state = { map: null, markers: {}, isPicking: false, pickMarker: null, pickCoords: null, activeChat: null, revTask: null, revStars: 5 };
-
-    async function enter(role) {
-        u.role = role;
-        document.getElementById('scr-auth').style.display = 'none';
-        document.getElementById('main-layout').style.display = 'flex';
-        document.getElementById('ui-controls').style.display = 'flex';
-        document.getElementById('p-id').innerText = u.id;
-        if(role === 'worker') document.getElementById('btn-add').style.display = 'none';
-
-        const { data: prof } = await _supabase.from('profiles').select('*').eq('id', u.id).single();
-        if(!prof) {
-            u.name = role === 'client' ? 'Заказчик' : 'Исполнитель';
-            await _supabase.from('profiles').insert([{ id: u.id, name: u.name, role, rating: 5.0, reviews_count: 0 }]);
-        } else { u.name = prof.name; }
-
-        initMap();
-        sync();
-    }
-
-    function initMap() {
-        state.map = L.map('map', { zoomControl: false }).setView([u.lat, u.lon], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        
-        navigator.geolocation.getCurrentPosition(p => {
-            u.lat = p.coords.latitude; u.lon = p.coords.longitude;
-            state.map.setView([u.lat, u.lon], 14);
-            L.circleMarker([u.lat, u.lon], { radius: 10, color: '#007AFF', fillOpacity: 0.8 }).addTo(state.map);
-        });
-
-        state.map.on('click', e => {
-            if(!state.isPicking) return;
-            if(state.pickMarker) state.map.removeLayer(state.pickMarker);
-            state.pickCoords = e.latlng;
-            state.pickMarker = L.marker(e.latlng).addTo(state.map);
-            showToast("📍 Место выбрано!");
-            openOverlay('ov-create');
-            document.getElementById('pick-btn').innerText = '📍 Точка установлена';
-            document.getElementById('form-fields').style.opacity = '1';
-            document.getElementById('form-fields').style.pointerEvents = 'auto';
-            state.isPicking = false;
-        });
-    }
-
-    function sync() {
-        loadData();
-        _supabase.channel('global').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
-        _supabase.channel('chats').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
-            if(p.new.sender_id !== u.id) {
-                if(state.activeChat === p.new.task_id) loadMsgs();
-                else showToast("💬 Новое сообщение!");
-            }
-        }).subscribe();
-    }
-
-    async function loadData() {
-        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        renderFeed(tasks);
-        renderProfileOrders(tasks);
-        updateMarkers(tasks);
-        loadProfileInfo();
-    }
-
-    function renderFeed(tasks) {
-        const feed = document.getElementById('list-feed');
-        feed.innerHTML = '';
-        tasks.forEach(t => {
-            const isMine = t.client_id === u.id || t.worker_id === u.id;
-            if(t.status === 'searching' || (isMine && t.status === 'active')) {
-                feed.appendChild(createCard(t));
-            }
-        });
-    }
-
-    function renderProfileOrders(tasks) {
-        const container = document.getElementById('p-my-orders');
-        container.innerHTML = '';
-        tasks.forEach(t => {
-            if(t.client_id === u.id || t.worker_id === u.id) {
-                container.appendChild(createCard(t));
-            }
-        });
-    }
-
-    function createCard(t) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        const isMine = t.client_id === u.id || t.worker_id === u.id;
-        
-        let color = t.status==='searching'?'#007AFF':(t.status==='active'?'#FF9500':'#34C759');
-        let label = t.status==='searching'?'Поиск':(t.status==='active'?'В работе':'Завершено');
-
-        card.innerHTML = `
-            <span class="badge" style="background:${color}15; color:${color}">${label}</span>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <b style="font-size:17px; flex:1;">${t.title}</b>
-                <b style="color:var(--p); font-size:18px; margin-left:10px;">${t.price} ₽</b>
+            
+            <!-- Переключатель ролей -->
+            <div class="role-switcher">
+                <button class="role-btn active" onclick="switchRole('customer')">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Заказчик</span>
+                </button>
+                <button class="role-btn" onclick="switchRole('master')">
+                    <i class="fas fa-tools"></i>
+                    <span>Мастер</span>
+                </button>
             </div>
-            <p style="font-size:13px; opacity:0.7; margin:8px 0;">${t.description || ''}</p>
-        `;
-
-        if(t.status === 'searching' && u.role === 'worker') {
-            const btn = document.createElement('button'); btn.className = 'btn btn-p'; btn.innerText = 'Принять заказ';
-            btn.onclick = () => takeTask(t.id); card.appendChild(btn);
-        }
-
-        if(t.status === 'active' && isMine) {
-            const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '10px';
-            const chat = document.createElement('button'); chat.className = 'btn btn-o'; chat.innerText = '💬 Чат';
-            chat.onclick = () => openChat(t.id, t.title); row.appendChild(chat);
             
-            if(u.role === 'client') {
-                const pay = document.createElement('button'); pay.className = 'btn btn-g'; pay.innerText = '✅ Оплатить';
-                pay.onclick = () => finishTask(t.id); row.appendChild(pay);
-            }
-            card.appendChild(row);
-        }
-
-        if(t.status === 'completed' && isMine) {
-            const field = u.role === 'client' ? 'client_reviewed' : 'worker_reviewed';
-            if(!t[field]) {
-                const rev = document.createElement('button'); rev.className = 'btn btn-o'; rev.innerText = '⭐ Оценить партнера';
-                rev.onclick = () => openReview(t.id); card.appendChild(rev);
-            }
-        }
-        return card;
-    }
-
-    // --- ЛОГИКА РЕЙТИНГА ---
-    function setStars(n) {
-        state.revStars = n;
-        document.querySelectorAll('.rating-star').forEach((s, i) => {
-            s.classList.toggle('active', i < n);
-        });
-    }
-
-    async function submitReview() {
-        const text = document.getElementById('rev-text').value;
-        const { data: task } = await _supabase.from('tasks').select('*').eq('id', state.revTask).single();
-        const targetId = u.role === 'client' ? task.worker_id : task.client_id;
+            <!-- Контент панели -->
+            <div class="panel-content">
+                <h2 class="section-title" id="panelTitle">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="titleText">Доступные заказы</span>
+                    <span style="margin-left: auto; font-size: 14px; color: var(--primary);" id="ordersCount">0</span>
+                </h2>
+                
+                <div id="ordersList" class="orders-grid">
+                    <!-- Скелетоны при загрузке -->
+                    <div class="order-card skeleton" style="height: 150px;"></div>
+                    <div class="order-card skeleton" style="height: 150px;"></div>
+                    <div class="order-card skeleton" style="height: 150px;"></div>
+                </div>
+            </div>
+        </div>
         
-        // 1. Сохраняем отзыв
-        await _supabase.from('reviews').insert([{ 
-            task_id: state.revTask, from_id: u.id, to_id: targetId, 
-            stars: state.revStars, comment: text 
-        }]);
-
-        // 2. Помечаем задачу как оцененную
-        const updField = u.role === 'client' ? { client_reviewed: true } : { worker_reviewed: true };
-        await _supabase.from('tasks').update(updField).eq('id', state.revTask);
-
-        // 3. ПЕРЕСЧЕТ РЕЙТИНГА для targetId
-        const { data: allRevs } = await _supabase.from('reviews').select('stars').eq('to_id', targetId);
-        const avg = allRevs.reduce((acc, r) => acc + r.stars, 0) / allRevs.length;
-        
-        await _supabase.from('profiles').update({ 
-            rating: parseFloat(avg.toFixed(1)), 
-            reviews_count: allRevs.length 
-        }).eq('id', targetId);
-
-        closeOverlay();
-        showToast("Спасибо! Рейтинг обновлен.");
-        loadData();
-    }
-
-    async function loadProfileInfo() {
-        const { data: p } = await _supabase.from('profiles').select('*').eq('id', u.id).single();
-        if(p) {
-            document.getElementById('p-name').innerText = p.name;
-            document.getElementById('p-rating-val').innerText = p.rating.toFixed(1);
+        <!-- Основная карта -->
+        <div class="map-container">
+            <div id="map"></div>
             
-            // Считаем завершенные заказы
-            const { count } = await _supabase.from('tasks').select('*', { count: 'exact', head: true })
-                .eq('status', 'completed')
-                .or(`client_id.eq.${u.id},worker_id.eq.${u.id}`);
-            document.getElementById('p-done-val').innerText = count || 0;
+            <!-- Поиск -->
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="addressSearch" 
+                           placeholder="Поиск адреса или места..."
+                           onkeypress="searchKeyPress(event)">
+                    <button class="search-btn" onclick="searchAddress()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Элементы управления картой -->
+            <div class="map-controls">
+                <button class="map-control-btn" onclick="centerMap()" title="Мое местоположение">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
+                <button class="map-control-btn pulse" onclick="openNewOrderModal()" id="newOrderBtn" title="Создать заказ">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="map-control-btn" onclick="toggleTheme()" title="Сменить тему">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+            
+            <!-- Информационное окно -->
+            <div class="map-info" id="mapInfo" style="display: none;">
+                <div class="info-header">
+                    <div class="info-title" id="infoTitle"></div>
+                    <button class="info-close" onclick="closeInfo()">×</button>
+                </div>
+                <div id="infoContent"></div>
+                <div class="order-actions" id="infoActions" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания заказа -->
+    <div id="orderModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+          background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-color); padding: 30px; border-radius: 25px; width: 500px; max-width: 90%;">
+            <h2 style="margin-bottom: 20px;">Новый заказ</h2>
+            <!-- Содержимое модалки -->
+        </div>
+    </div>
+
+    <!-- Подключение библиотек -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://unpkg.com/leaflet.awesome-markers@2.0/dist/leaflet.awesome-markers.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.pulse@0.1.0/dist/L.PulseIcon.min.js"></script>
+    
+    <script>
+        // Состояние приложения
+        const state = {
+            user: null,
+            role: 'customer',
+            map: null,
+            currentPosition: null,
+            markers: new Map(),
+            selectedOrder: null,
+            orders: [],
+            sidePanelOpen: true,
+            theme: localStorage.getItem('microhelp_theme') || 'light'
+        };
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initApp();
+        });
+
+        async function initApp() {
+            loadTheme();
+            initMap();
+            loadTestOrders();
+            setupEventListeners();
         }
 
-        const { data: revs } = await _supabase.from('reviews').select('*').eq('to_id', u.id).order('created_at', {ascending: false});
-        const rList = document.getElementById('p-reviews');
-        rList.innerHTML = revs.length ? '' : '<p style="opacity:0.4; font-size:12px; text-align:center;">Пока нет отзывов</p>';
-        revs.forEach(r => {
-            rList.innerHTML += `
-                <div class="card" style="padding:15px; margin-bottom:10px; border-radius:18px;">
-                    <div style="color:var(--orange); font-size:12px; font-weight:800;">${'★'.repeat(r.stars)}</div>
-                    <p style="margin:5px 0 0 0; font-size:13px; line-height:1.4;">${r.comment || 'Без комментария'}</p>
-                </div>`;
-        });
-    }
+        function loadTheme() {
+            document.documentElement.setAttribute('data-theme', state.theme);
+            const icon = state.theme === 'light' ? 'fa-moon' : 'fa-sun';
+            document.getElementById('themeIcon').className = `fas ${icon}`;
+        }
 
-    // --- ОСТАЛЬНАЯ ЛОГИКА ---
-    function startPicking() { state.isPicking = true; closeOverlay(); showToast("Нажмите на карту"); }
-    async function createTask() {
-        const title = document.getElementById('c-title').value;
-        const desc = document.getElementById('c-desc').value;
-        const price = document.getElementById('c-price').value;
-        if(!title || !state.pickCoords) return;
-        await _supabase.from('tasks').insert([{ title, description: desc, price: parseInt(price), client_id: u.id, lat: state.pickCoords.lat, lon: state.pickCoords.lng, status: 'searching' }]);
-        closeOverlay(); showToast("Задание на карте!");
-    }
-    async function takeTask(id) { await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id); }
-    async function finishTask(id) { if(confirm("Завершить и оплатить?")) await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id); }
-    async function openChat(id, title) { state.activeChat = id; document.getElementById('chat-title').innerText = title; openOverlay('ov-chat'); loadMsgs(); }
-    async function loadMsgs() {
-        if(!state.activeChat) return;
-        const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChat).order('created_at');
-        const box = document.getElementById('chat-box'); box.innerHTML = '';
-        data.forEach(m => {
-            const div = document.createElement('div'); div.className = `msg ${m.sender_id === u.id ? 'me' : 'other'}`;
-            div.innerText = m.text; box.appendChild(div);
-        });
-        box.scrollTop = box.scrollHeight;
-    }
-    async function sendMsg() {
-        const inp = document.getElementById('chat-inp'); if(!inp.value) return;
-        await _supabase.from('messages').insert([{ task_id: state.activeChat, sender_id: u.id, text: inp.value }]);
-        inp.value = '';
-    }
-    function updateMarkers(tasks) {
-        Object.values(state.markers).forEach(m => state.map.removeLayer(m));
-        tasks.forEach(t => { if(t.status === 'searching') state.markers[t.id] = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(`<b>${t.title}</b><br>${t.price}₽`); });
-    }
-    function openReview(id) { state.revTask = id; setStars(5); openOverlay('ov-review'); }
-    function openOverlay(id) { document.getElementById(id).classList.add('active'); }
-    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); state.activeChat = null; }
-    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(() => t.style.display='none', 3000); }
-</script>
+        function toggleTheme() {
+            state.theme = state.theme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('microhelp_theme', state.theme);
+            loadTheme();
+            
+            // Обновляем стиль карты
+            updateMapStyle();
+        }
+
+        function initMap() {
+            // Создаем карту с уникальным стилем
+            state.map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true,
+                fadeAnimation: true,
+                zoomAnimation: true,
+                scrollWheelZoom: 'center'
+            }).setView([55.7558, 37.6173], 12);
+
+            // Создаем кастомный слой карты
+            const customLayer = createCustomTileLayer();
+            customLayer.addTo(state.map);
+
+            // Добавляем кастомные элементы управления
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(state.map);
+
+            // Определяем местоположение
+            state.map.locate({setView: true, maxZoom: 14});
+            
+            state.map.on('locationfound', function(e) {
+                state.currentPosition = e.latlng;
+                
+                // Создаем уникальный маркер для местоположения
+                createPulsingMarker(e.latlng, 'Ваше местоположение', 'customer');
+                
+                // Добавляем анимацию
+                createRippleEffect(e.latlng);
+            });
+
+            state.map.on('click', function(e) {
+                if (state.role === 'customer') {
+                    createRippleEffect(e.latlng);
+                    showLocationInfo(e.latlng);
+                }
+            });
+
+            // Добавляем эффекты при загрузке
+            setTimeout(() => {
+                state.map.invalidateSize();
+                addParticles();
+            }, 100);
+        }
+
+        function createCustomTileLayer() {
+            // Используем разные провайдеры для уникального вида
+            let tileUrl;
+            let attribution;
+            
+            if (state.theme === 'dark') {
+                // Темная тема с уникальным стилем
+                tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+                attribution = '© OpenStreetMap, © CartoDB';
+            } else {
+                // Светлая тема с пастельными цветами
+                tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+                attribution = '© OpenStreetMap, © CartoDB';
+            }
+
+            return L.tileLayer(tileUrl, {
+                attribution: attribution,
+                className: 'custom-tile-layer',
+                maxZoom: 19,
+                minZoom: 3
+            });
+        }
+
+        function updateMapStyle() {
+            // Обновляем слой карты при смене темы
+            state.map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    state.map.removeLayer(layer);
+                }
+            });
+            
+            const newLayer = createCustomTileLayer();
+            newLayer.addTo(state.map);
+        }
+
+        function createPulsingMarker(latlng, title, type) {
+            // Создаем пульсирующий маркер
+            const icon = L.divIcon({
+                className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
+                              type === 'master' ? 'marker-master' : 'marker-order'),
+                html: getMarkerIcon(type),
+                iconSize: [60, 60],
+                iconAnchor: [30, 60],
+                popupAnchor: [0, -60]
+            });
+
+            const marker = L.marker(latlng, { icon: icon })
+                .addTo(state.map)
+                .bindPopup(`<b>${title}</b>`);
+
+            // Добавляем эффект при наведении
+            marker.on('mouseover', function() {
+                this.setIcon(L.divIcon({
+                    className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
+                                  type === 'master' ? 'marker-master' : 'marker-order') + ' glow',
+                    html: getMarkerIcon(type),
+                    iconSize: [70, 70],
+                    iconAnchor: [35, 70]
+                }));
+            });
+
+            marker.on('mouseout', function() {
+                this.setIcon(icon);
+            });
+
+            return marker;
+        }
+
+        function getMarkerIcon(type) {
+            const icons = {
+                'customer': '<i class="fas fa-user"></i>',
+                'master': '<i class="fas fa-tools"></i>',
+                'order': '<i class="fas fa-tag"></i>'
+            };
+            return icons[type] || icons.order;
+        }
+
+        function createRippleEffect(latlng) {
+            // Создаем эффект волн при клике
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const ripple = L.circle(latlng, {
+                        radius: 10 + (i * 20),
+                        color: 'transparent',
+                        fillColor: state.theme === 'dark' ? '#4F46E5' : '#818CF8',
+                        fillOpacity: 0.3 - (i * 0.1),
+                        weight: 0
+                    }).addTo(state.map);
+
+                    ripple.setRadius(10 + (i * 20));
+                    
+                    setTimeout(() => {
+                        state.map.removeLayer(ripple);
+                    }, 1000);
+                }, i * 200);
+            }
+        }
+
+        function addParticles() {
+            // Добавляем частицы для декоративного эффекта
+            for (let i = 0; i < 20; i++) {
+                const lat = 55.7558 + (Math.random() - 0.5) * 0.1;
+                const lng = 37.6173 + (Math.random() - 0.5) * 0.1;
+                
+                const particle = L.circle([lat, lng], {
+                    radius: 2,
+                    color: 'transparent',
+                    fillColor: state.theme === 'dark' ? '#818CF8' : '#4F46E5',
+                    fillOpacity: 0.3,
+                    weight: 0
+                }).addTo(state.map);
+
+                // Анимация частицы
+                animateParticle(particle);
+            }
+        }
+
+        function animateParticle(particle) {
+            const startPos = particle.getLatLng();
+            let angle = Math.random() * Math.PI * 2;
+            let distance = 0;
+            let opacity = 0.3;
+
+            function animate() {
+                distance += 0.0001;
+                opacity -= 0.001;
+                
+                if (opacity <= 0) {
+                    particle.setLatLng([
+                        startPos.lat + (Math.random() - 0.5) * 0.02,
+                        startPos.lng + (Math.random() - 0.5) * 0.02
+                    ]);
+                    opacity = 0.3;
+                    distance = 0;
+                } else {
+                    const newLat = startPos.lat + Math.sin(angle) * distance;
+                    const newLng = startPos.lng + Math.cos(angle) * distance;
+                    particle.setLatLng([newLat, newLng]);
+                    particle.setStyle({ fillOpacity: opacity });
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+
+        function toggleSidePanel() {
+            const panel = document.getElementById('sidePanel');
+            const icon = document.getElementById('panelToggleIcon');
+            
+            state.sidePanelOpen = !state.sidePanelOpen;
+            panel.classList.toggle('hidden');
+            
+            icon.className = state.sidePanelOpen ? 
+                'fas fa-chevron-left' : 'fas fa-chevron-right';
+        }
+
+        function switchRole(role) {
+            state.role = role;
+            
+            // Обновляем кнопки
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Обновляем интерфейс
+            document.getElementById('userRole').textContent = 
+                role === 'customer' ? 'Заказчик' : 'Мастер';
+            document.getElementById('titleText').textContent = 
+                role === 'customer' ? 'Мои заказы' : 'Доступные заказы';
+            
+            // Обновляем заказы
+            updateOrdersList();
+        }
+
+        function loadTestOrders() {
+            // Тестовые данные
+            state.orders = [
+                {
+                    id: 1,
+                    title: "Доставить документы",
+                    description: "Срочная доставка документов в центр города",
+                    price: 1500,
+                    location: { lat: 55.7558, lng: 37.6173 },
+                    address: "Москва, Красная площадь",
+                    status: "new",
+                    category: "delivery"
+                },
+                {
+                    id: 2,
+                    title: "Купить продукты",
+                    description: "Список продуктов: молоко, хлеб, яйца, фрукты",
+                    price: 800,
+                    location: { lat: 55.7358, lng: 37.6273 },
+                    address: "Москва, Арбат",
+                    status: "new",
+                    category: "shopping"
+                },
+                {
+                    id: 3,
+                    title: "Помощь с переездом",
+                    description: "Помочь перетащить коробки и мебель",
+                    price: 3000,
+                    location: { lat: 55.7658, lng: 37.6073 },
+                    address: "Москва, Пресня",
+                    status: "active",
+                    category: "help"
+                }
+            ];
+            
+            updateOrdersList();
+            addOrderMarkers();
+        }
+
+        function updateOrdersList() {
+            const container = document.getElementById('ordersList');
+            const filteredOrders = state.orders.filter(order => 
+                state.role === 'customer' || order.status === 'new'
+            );
+            
+            document.getElementById('ordersCount').textContent = filteredOrders.length;
+            
+            container.innerHTML = '';
+            
+            filteredOrders.forEach(order => {
+                const orderCard = createOrderCard(order);
+                container.appendChild(orderCard);
+            });
+        }
+
+        function createOrderCard(order) {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+            card.dataset.orderId = order.id;
+            
+            card.innerHTML = `
+                <div class="order-header">
+                    <div class="order-title">${order.title}</div>
+                    <div class="order-price">${order.price} ₽</div>
+                </div>
+                <div class="order-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${order.address.split(',')[0]}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>${order.category === 'delivery' ? '30 мин' : '1 час'}</span>
+                    </div>
+                </div>
+                <div class="order-description">${order.description}</div>
+                <div class="order-actions">
+                    ${state.role === 'master' && order.status === 'new' ? `
+                    <button class="btn btn-primary" onclick="takeOrder(${order.id})">
+                        <i class="fas fa-check"></i> Взять
+                    </button>
+                    ` : ''}
+                    <button class="btn btn-outline" onclick="viewOrderOnMap(${order.id})">
+                        <i class="fas fa-eye"></i> На карте
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function addOrderMarkers() {
+            // Очищаем старые маркеры
+            state.markers.forEach(marker => {
+                state.map.removeLayer(marker);
+            });
+            state.markers.clear();
+            
+            // Добавляем новые маркеры
+            state.orders.forEach(order => {
+                if (order.location) {
+                    const marker = createPulsingMarker(
+                        order.location,
+                        order.title,
+                        'order'
+                    );
+                    
+                    marker.on('click', () => {
+                        showOrderInfo(order);
+                    });
+                    
+                    state.markers.set(order.id, marker);
+                }
+            });
+        }
+
+        function centerMap() {
+            if (state.currentPosition) {
+                state.map.setView(state.currentPosition, 14);
+                createRippleEffect(state.currentPosition);
+            } else {
+                state.map.locate({setView: true, maxZoom: 14});
+            }
+        }
+
+        function searchAddress() {
+            const query = document.getElementById('addressSearch').value;
+            if (!query) return;
+            
+            // Эмуляция поиска
+            const lat = 55.7558 + (Math.random() - 0.5) * 0.01;
+            const lng = 37.6173 + (Math.random() - 0.5) * 0.01;
+            
+            state.map.setView([lat, lng], 16);
+            createPulsingMarker([lat, lng], query, 'order');
+            
+            showToast("Адрес найден");
+        }
+
+        function searchKeyPress(e) {
+            if (e.key === 'Enter') {
+                searchAddress();
+            }
+        }
+
+        function showOrderInfo(order) {
+            document.getElementById('infoTitle').textContent = order.title;
+            
+            document.getElementById('infoContent').innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <div style="font-size: 28px; font-weight: 800; color: var(--success);">
+                        ${order.price} ₽
+                    </div>
+                    <div style="color: #64748B; margin-top: 5px;">
+                        <i class="fas fa-map-marker-alt"></i> ${order.address}
+                    </div>
+                </div>
+                <div style="color: var(--text-color); opacity: 0.8;">
+                    ${order.description}
+                </div>
+            `;
+            
+            document.getElementById('infoActions').innerHTML = `
+                ${state.role === 'master' && order.status === 'new' ? `
+                <button class="btn btn-primary" onclick="takeOrder(${order.id})" style="flex: 2;">
+                    <i class="fas fa-check"></i> Взять заказ
+                </button>
+                ` : ''}
+                <button class="btn btn-outline" onclick="closeInfo()">
+                    <i class="fas fa-times"></i> Закрыть
+                </button>
+            `;
+            
+            document.getElementById('mapInfo').style.display = 'block';
+            
+            // Центрируем карту на заказе
+            state.map.setView(order.location, 16);
+        }
+
+        function showLocationInfo(latlng) {
+            document.getElementById('infoTitle').textContent = 'Новый заказ';
+            
+            document.getElementById('infoContent').innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <div style="color: #64748B;">
+                        <i class="fas fa-map-marker-alt"></i> Вы выбрали место
+                    </div>
+                    <div style="font-size: 14px; margin-top: 5px;">
+                        Широта: ${latlng.lat.toFixed(6)}<br>
+                        Долгота: ${latlng.lng.toFixed(6)}
+                    </div>
+                </div>
+                <div style="color: var(--text-color); opacity: 0.8;">
+                    Нажмите "Создать заказ" для продолжения
+                </div>
+            `;
+            
+            document.getElementById('infoActions').innerHTML = `
+                <button class="btn btn-primary" onclick="openNewOrderModal()" style="flex: 2;">
+                    <i class="fas fa-plus"></i> Создать заказ
+                </button>
+                <button class="btn btn-outline" onclick="closeInfo()">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            `;
+            
+            document.getElementById('mapInfo').style.display = 'block';
+        }
+
+        function closeInfo() {
+            document.getElementById('mapInfo').style.display = 'none';
+        }
+
+        function openNewOrderModal() {
+            // Здесь будет открытие модалки создания заказа
+            showToast("Форма создания заказа");
+        }
+
+        function takeOrder(orderId) {
+            const order = state.orders.find(o => o.id === orderId);
+            if (order) {
+                order.status = 'active';
+                updateOrdersList();
+                closeInfo();
+                showToast("Вы взяли заказ в работу!");
+                
+                // Анимация принятия заказа
+                const marker = state.markers.get(orderId);
+                if (marker) {
+                    marker.setIcon(L.divIcon({
+                        className: 'custom-marker marker-master',
+                        html: '<i class="fas fa-check"></i>',
+                        iconSize: [60, 60],
+                        iconAnchor: [30, 60]
+                    }));
+                }
+            }
+        }
+
+        function viewOrderOnMap(orderId) {
+            const order = state.orders.find(o => o.id === orderId);
+            if (order && order.location) {
+                state.map.setView(order.location, 16);
+                showOrderInfo(order);
+            }
+        }
+
+        function setupEventListeners() {
+            // Анимация при загрузке
+            setTimeout(() => {
+                document.querySelectorAll('.order-card').forEach((card, i) => {
+                    setTimeout(() => {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        card.offsetHeight; // Trigger reflow
+                        card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, i * 100);
+                });
+            }, 300);
+        }
+
+        function showToast(message) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: state.theme === 'dark' ? 
+                    "linear-gradient(to right, #4F46E5, #4338CA)" :
+                    "linear-gradient(to right, #6366F1, #8B5CF6)",
+                stopOnFocus: true
+            }).showToast();
+        }
+
+        // Экспорт функций для глобального использования
+        window.toggleSidePanel = toggleSidePanel;
+        window.switchRole = switchRole;
+        window.centerMap = centerMap;
+        window.searchAddress = searchAddress;
+        window.searchKeyPress = searchKeyPress;
+        window.openNewOrderModal = openNewOrderModal;
+        window.takeOrder = takeOrder;
+        window.viewOrderOnMap = viewOrderOnMap;
+        window.closeInfo = closeInfo;
+        window.toggleTheme = toggleTheme;
+    </script>
 </body>
 </html>
-
-
