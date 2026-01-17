@@ -1394,7 +1394,8 @@
             loadTheme();
             
             // Проверяем авторизацию
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { user } } = await _supabase.auth.getUser();
+const customerId = user.id;
             
             if (session) {
                 // Пользователь авторизован
@@ -2718,3 +2719,4 @@
     </script>
 </body>
 </html>
+
