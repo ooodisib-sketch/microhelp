@@ -1363,12 +1363,27 @@
                 skeleton.className = 'order-card skeleton skeleton-order';
                 container.appendChild(skeleton);
             }
-        }
-
         function displayOrders(orders) {
-            state.orders = orders;
-            const container = document.getElementById('ordersList');
-            container.innerHTML = '';
+    const feed = document.getElementById('list-feed');
+    if (!feed) return; // Защита от ошибок
+    
+    feed.innerHTML = '';
+    let totalEarned = 0;
+    let completedCount = 0;
+
+    orders.forEach(t => {
+        // ... ваша логика отрисовки карточек ...
+        if (t.status === 'completed' && t.worker_id === u.id) {
+            totalEarned += Number(t.price || 0);
+            completedCount++;
+        
+    });
+
+    // Безопасное обновление аналитики (теперь ID совпадут с HTML выше)
+    if (document.getElementById('p-name')) document.getElementById('p-name').textContent = u.name || 'Пользователь';
+    if (document.getElementById('st-money')) document.getElementById('st-money').textContent = totalEarned + ' ₽';
+    if (document.getElementById('st-count')) document.getElementById('st-count').textContent = completedCount;
+}
             
             // Обновляем счетчик
             document.getElementById('orderCount').textContent = orders.length;
@@ -1806,4 +1821,5 @@
     </script>
 </body>
 </html>
+
 
