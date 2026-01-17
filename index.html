@@ -1356,11 +1356,11 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     
     <script>
-        // ===================== КОНФИГУРАЦИЯ =====================
+        // ===================== КОНФИГУРАЦИЯ И ГЛОБАЛЬНЫЕ ФУНКЦИИ =====================
         const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NDEzNjAsImV4cCI6MjA4NDExNzM2MH0.lagPVLLopst3yx5eiuJchwOP4wJg49cEqmWZrNWxFrQ';
         
-        // Инициализация Supabase клиента - только один раз!
+        // Инициализация Supabase клиента
         let supabaseClient;
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1369,9 +1369,47 @@
             console.error('Error initializing Supabase:', error);
         }
         
-                // ===================== ИСПРАВЛЕННЫЙ КОД =====================
-        // (Замените весь код после инициализации supabaseClient до конца)
+        // ===================== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ HTML =====================
+        window.switchAuthTab = function(tab) {
+            console.log('Switch tab to:', tab);
+            
+            document.querySelectorAll('.auth-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            
+            if (tab === 'login') {
+                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        };
         
+        window.selectRole = function(role) {
+            console.log('Select role:', role);
+            
+            document.querySelectorAll('.role-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            event.target.closest('.role-option').classList.add('active');
+        };
+        
+        window.login = async function() {
+            console.log('Login function called');
+            // Эта функция будет переопределена ниже
+        };
+        
+        window.register = async function() {
+            console.log('Register function called');
+            // Эта функция будет переопределена ниже
+        };
+        
+        // ===================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====================
         const state = {
             user: null,
             role: 'customer',
@@ -1388,7 +1426,8 @@
             selectedLocation: null,
             selectedMarker: null,
             photos: [],
-            activeChatOrderId: null
+            activeChatOrderId: null,
+            currentMarker: null
         };
 
         // ===================== ИНИЦИАЛИЗАЦИЯ =====================
@@ -1448,35 +1487,7 @@
             document.getElementById('mainInterface').style.display = 'flex';
         }
 
-        window.switchAuthTab = function(tab) {
-            state.authTab = tab;
-            
-            document.querySelectorAll('.auth-tab').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelectorAll('.auth-form').forEach(form => {
-                form.classList.remove('active');
-            });
-            
-            if (tab === 'login') {
-                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
-                document.getElementById('loginForm').classList.add('active');
-            } else {
-                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
-                document.getElementById('registerForm').classList.add('active');
-            }
-        };
-
-        window.selectRole = function(role) {
-            state.selectedRegisterRole = role;
-            
-            document.querySelectorAll('.role-option').forEach(option => {
-                option.classList.remove('active');
-            });
-            
-            event.target.closest('.role-option').classList.add('active');
-        };
-
+        // Переопределяем глобальную функцию login
         window.login = async function() {
             showLoading();
             
@@ -1516,6 +1527,7 @@
             hideLoading();
         };
 
+        // Переопределяем глобальную функцию register
         window.register = async function() {
             showLoading();
             
@@ -1767,9 +1779,9 @@
                 position: 'bottomright'
             }).addTo(state.map);
             
-            // Определяем местоположение - исправлено
+            // Определяем местоположение
             state.map.locate({ 
-                setView: false,  // Не центрируем автоматически
+                setView: false,
                 maxZoom: 14,
                 watch: false,
                 enableHighAccuracy: true 
@@ -2727,3 +2739,6 @@
                 });
             });
         };
+    </script>
+</body>
+</html>
