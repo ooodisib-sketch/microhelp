@@ -2,204 +2,306 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>МикроПомощь PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>МикроПомощь PRO | Финальная Версия</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; }
-        #map { height: 100vh; }
-        .controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .btn {
-            padding: 12px 20px;
-            background: #007AFF;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal.active { display: flex; }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 400px;
-            width: 90%;
-        }
-        .input { width: 100%; padding: 10px; margin: 10px 0; }
+        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --grey: #E5E5EA; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--text); height: 100vh; }
+        
+        /* UI Elements */
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .top-nav { position: fixed; top: 20px; left: 0; right: 0; z-index: 5000; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; }
+        .circle-btn { width: 56px; height: 56px; background: white; border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.15); pointer-events: auto; font-size: 24px; cursor: pointer; border: none; }
+
+        /* Layout */
+        #main-layout { display: none; flex-direction: column; height: 100vh; }
+        #map-container { height: 40%; width: 100%; position: relative; z-index: 1; }
+        #map { height: 100%; width: 100%; }
+        #content-container { height: 60%; background: var(--bg); border-top-left-radius: 30px; border-top-right-radius: 30px; margin-top: -30px; z-index: 100; position: relative; overflow-y: auto; padding: 25px 20px; box-shadow: 0 -15px 30px rgba(0,0,0,0.08); }
+
+        /* Auth Screen */
+        #scr-auth { position: fixed; inset: 0; background: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .auth-box { width: 100%; max-width: 320px; }
+        input, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid #DDD; margin-bottom: 12px; box-sizing: border-box; font-family: inherit; font-size: 16px; outline: none; }
+        
+        .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.2s; }
+        .btn-p { background: var(--p); color: white; }
+        .btn-o { background: var(--grey); color: var(--text); }
+        .btn-g { background: var(--green); color: white; }
+
+        /* Role Switcher */
+        .role-toggle { background: var(--grey); border-radius: 12px; display: flex; padding: 4px; margin: 15px 0; }
+        .role-btn { flex: 1; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; background: none; color: #888; transition: 0.3s; }
+        .role-btn.active { background: white; color: var(--p); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        /* Cards & Lists */
+        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.02); }
+        .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
+
+        /* Overlay */
+        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
+        .overlay.active { transform: translateY(0); }
+        .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
+
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 12px 16px; border-radius: 18px; max-width: 80%; font-size: 14px; }
+        .msg.me { background: var(--p); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .msg.other { background: white; align-self: flex-start; border-bottom-left-radius: 4px; }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    
-    <div class="controls">
-        <button class="btn" id="btnAuth">Войти</button>
-        <button class="btn" id="btnCreate">Создать задание</button>
-    </div>
-    
-    <div class="modal" id="authModal">
-        <div class="modal-content">
-            <h3>Вход в систему</h3>
-            <input type="email" id="authEmail" class="input" placeholder="Email">
-            <input type="password" id="authPassword" class="input" placeholder="Пароль">
-            <select id="userRole" class="input">
-                <option value="customer">Заказчик</option>
-                <option value="master">Мастер</option>
-            </select>
-            <button class="btn" id="btnLogin">Войти</button>
-            <button class="btn" style="background: #666;" id="btnCloseAuth">Закрыть</button>
-        </div>
-    </div>
-    
-    <div class="modal" id="taskModal">
-        <div class="modal-content">
-            <h3>Новое задание</h3>
-            <input type="text" id="taskTitle" class="input" placeholder="Название">
-            <textarea id="taskDesc" class="input" placeholder="Описание" rows="3"></textarea>
-            <input type="number" id="taskBudget" class="input" placeholder="Бюджет (₽)">
-            <button class="btn" id="btnCreateTask">Создать</button>
-            <button class="btn" style="background: #666;" id="btnCloseTask">Закрыть</button>
-        </div>
-    </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        let map = null;
-        let user = null;
-        let tasks = [];
+<div id="toast"></div>
+
+<div id="scr-auth">
+    <div style="font-size: 60px;">🤝</div>
+    <h1 style="font-weight: 900; color: var(--p); margin: 0;">MicroHelp PRO</h1>
+    <p style="opacity: 0.5; margin-bottom: 30px;">Войдите, чтобы начать помогать</p>
+    
+    <div class="auth-box">
+        <div id="auth-fields">
+            <input type="email" id="auth-email" placeholder="Email">
+            <input type="password" id="auth-pass" placeholder="Пароль">
+            <input type="text" id="auth-phone" placeholder="Телефон (+7...)" style="display:none;">
+            <input type="text" id="auth-name" placeholder="Ваше имя" style="display:none;">
+        </div>
         
-        // Инициализация карты
-        function initMap() {
-            map = L.map('map').setView([55.7558, 37.6173], 12);
+        <button class="btn btn-p" id="btn-auth-action" onclick="handleAuth()">Войти</button>
+        <p id="auth-toggle" onclick="toggleAuthMode()" style="font-size: 13px; color: var(--p); margin-top: 20px; cursor: pointer; font-weight: 600;">Нет аккаунта? Регистрация</p>
+    </div>
+</div>
+
+<div id="main-layout">
+    <div class="top-nav">
+        <button class="circle-btn" onclick="openOverlay('ov-create')" id="btn-add-ui">➕</button>
+        <button class="circle-btn" onclick="openOverlay('ov-profile')">👤</button>
+    </div>
+    
+    <div id="map-container"><div id="map"></div></div>
+    <div id="content-container">
+        <h2 style="font-weight: 800; margin: 0 0 15px 0;">Задания рядом</h2>
+        <div id="list-feed"></div>
+    </div>
+</div>
+
+<div id="ov-profile" class="overlay">
+    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Кабинет</div>
+    <div style="padding: 20px; overflow-y: auto;">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 50px;">👤</div>
+            <h2 id="p-name-disp" style="margin: 10px 0 5px 0;">Имя</h2>
+            <div id="p-phone-disp" style="font-size: 14px; opacity: 0.5;">+7...</div>
             
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
+            <div class="role-toggle">
+                <button id="role-client" class="role-btn" onclick="updateRole('client')">Заказчик</button>
+                <button id="role-worker" class="role-btn" onclick="updateRole('worker')">Исполнитель</button>
+            </div>
             
-            // Получение местоположения
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    const { latitude, longitude } = pos.coords;
-                    map.setView([latitude, longitude], 14);
-                    L.marker([latitude, longitude])
-                        .addTo(map)
-                        .bindPopup('Вы здесь')
-                        .openPopup();
-                });
+            <button class="btn btn-o" onclick="signOut()" style="color: var(--red); margin-top: 10px;">Выйти из профиля</button>
+        </div>
+        <h3>Моя активность</h3>
+        <div id="p-history"></div>
+    </div>
+</div>
+
+<div id="ov-create" class="overlay">
+    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Новый заказ</div>
+    <div style="padding: 20px;">
+        <button class="btn btn-o" onclick="startPicking()" id="pick-btn" style="border: 2px dashed var(--p);">📍 Указать на карте</button>
+        <div id="form-fields" style="margin-top: 20px; display: none;">
+            <input id="c-title" placeholder="Что нужно сделать?">
+            <textarea id="c-desc" placeholder="Подробности..."></textarea>
+            <input id="c-price" type="number" placeholder="Бюджет ₽">
+            <button class="btn btn-p" onclick="createTask()">Разместить</button>
+        </div>
+    </div>
+</div>
+
+<div id="ov-chat" class="overlay">
+    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> <span id="chat-title">Чат</span></div>
+    <div id="chat-box"></div>
+    <div style="padding: 20px; background: white; display: flex; gap: 10px;">
+        <input id="chat-inp" placeholder="Сообщение..." style="margin:0; flex:1; border:none;">
+        <button class="btn btn-p" onclick="sendMsg()" style="width:auto; padding:0 20px;">➤</button>
+    </div>
+</div>
+
+<script>
+    const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
+    const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
+    const _supabase = supabase.createClient(SB_URL, SB_KEY);
+
+    let isRegMode = false;
+    let u = null; // Текущий профиль
+    let state = { map: null, pickCoords: null, activeChat: null, markers: {} };
+
+    // --- AUTH LOGIC ---
+    function toggleAuthMode() {
+        isRegMode = !isRegMode;
+        document.getElementById('auth-phone').style.display = isRegMode ? 'block' : 'none';
+        document.getElementById('auth-name').style.display = isRegMode ? 'block' : 'none';
+        document.getElementById('btn-auth-action').innerText = isRegMode ? 'Создать аккаунт' : 'Войти';
+        document.getElementById('auth-toggle').innerText = isRegMode ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Регистрация';
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('auth-email').value;
+        const pass = document.getElementById('auth-pass').value;
+        const phone = document.getElementById('auth-phone').value;
+        const name = document.getElementById('auth-name').value;
+
+        if (isRegMode) {
+            const { data, error } = await _supabase.auth.signUp({ email, password: pass });
+            if (error) return showToast(error.message);
+            if (data.user) {
+                await _supabase.from('profiles').insert([{ id: data.user.id, name, phone, role: 'client' }]);
+                showToast("Регистрация успешна! Теперь войдите.");
+                toggleAuthMode();
             }
-            
-            // Добавить демо-задания
-            addDemoTasks();
+        } else {
+            const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+            if (error) return showToast("Ошибка входа: проверьте данные");
+            checkUser();
         }
-        
-        // Добавить демо-задания
-        function addDemoTasks() {
-            const demoTasks = [
-                { lat: 55.7558, lng: 37.6173, title: 'Помочь с переездом', budget: 5000 },
-                { lat: 55.7512, lng: 37.6184, title: 'Починить кран', budget: 2000 },
-                { lat: 55.7580, lng: 37.6160, title: 'Доставить документы', budget: 1500 }
-            ];
-            
-            demoTasks.forEach(task => {
-                L.marker([task.lat, task.lng])
-                    .addTo(map)
-                    .bindPopup(`<b>${task.title}</b><br>${task.budget}₽<br><button onclick="takeTask()">Взять задание</button>`);
-            });
-        }
-        
-        // Взять задание
-        function takeTask() {
-            alert('Задание взято в работу! В реальном приложении здесь будет связь с сервером.');
-        }
-        
-        // Создать задание
-        function createTask() {
-            const title = document.getElementById('taskTitle').value;
-            const desc = document.getElementById('taskDesc').value;
-            const budget = document.getElementById('taskBudget').value;
-            
-            if (!title || !budget) {
-                alert('Заполните название и бюджет');
-                return;
+    }
+
+    async function checkUser() {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) {
+            const { data: prof } = await _supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+            if (prof) {
+                u = prof;
+                startApp();
             }
-            
-            const center = map.getCenter();
-            L.marker([center.lat, center.lng])
-                .addTo(map)
-                .bindPopup(`<b>${title}</b><br>${budget}₽<br>${desc}`)
-                .openPopup();
-            
-            document.getElementById('taskModal').classList.remove('active');
-            alert('Задание создано!');
-            
-            // Очистить форму
-            document.getElementById('taskTitle').value = '';
-            document.getElementById('taskDesc').value = '';
-            document.getElementById('taskBudget').value = '';
         }
+    }
+
+    // --- APP LOGIC ---
+    function startApp() {
+        document.getElementById('scr-auth').style.display = 'none';
+        document.getElementById('main-layout').style.display = 'flex';
         
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', function() {
-            initMap();
-            
-            // Обработчики событий
-            document.getElementById('btnAuth').addEventListener('click', function() {
-                document.getElementById('authModal').classList.add('active');
-            });
-            
-            document.getElementById('btnCreate').addEventListener('click', function() {
-                document.getElementById('taskModal').classList.add('active');
-            });
-            
-            document.getElementById('btnLogin').addEventListener('click', function() {
-                const email = document.getElementById('authEmail').value;
-                const role = document.getElementById('userRole').value;
-                
-                if (email) {
-                    user = { email: email, role: role };
-                    alert(`Добро пожаловать, ${role === 'customer' ? 'Заказчик' : 'Мастер'}!`);
-                    document.getElementById('authModal').classList.remove('active');
-                    document.getElementById('btnAuth').textContent = email;
-                }
-            });
-            
-            document.getElementById('btnCreateTask').addEventListener('click', createTask);
-            
-            document.getElementById('btnCloseAuth').addEventListener('click', function() {
-                document.getElementById('authModal').classList.remove('active');
-            });
-            
-            document.getElementById('btnCloseTask').addEventListener('click', function() {
-                document.getElementById('taskModal').classList.remove('active');
-            });
-            
-            // Закрытие модалок по клику вне
-            document.querySelectorAll('.modal').forEach(modal => {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        this.classList.remove('active');
-                    }
-                });
-            });
+        // Обновляем UI профиля
+        document.getElementById('p-name-disp').innerText = u.name;
+        document.getElementById('p-phone-disp').innerText = u.phone;
+        updateRoleUI();
+        
+        initMap();
+        syncData();
+    }
+
+    async function updateRole(newRole) {
+        u.role = newRole;
+        await _supabase.from('profiles').update({ role: newRole }).eq('id', u.id);
+        updateRoleUI();
+        loadTasks();
+        showToast(`Вы переключились на роль: ${newRole === 'client' ? 'Заказчик' : 'Исполнитель'}`);
+    }
+
+    function updateRoleUI() {
+        document.getElementById('role-client').classList.toggle('active', u.role === 'client');
+        document.getElementById('role-worker').classList.toggle('active', u.role === 'worker');
+        document.getElementById('btn-add-ui').style.display = u.role === 'client' ? 'flex' : 'none';
+    }
+
+    function initMap() {
+        if (state.map) return;
+        state.map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+        
+        state.map.on('click', e => {
+            if (!state.isPicking) return;
+            state.pickCoords = e.latlng;
+            openOverlay('ov-create');
+            document.getElementById('form-fields').style.display = 'block';
+            document.getElementById('pick-btn').innerText = '✅ Точка выбрана';
+            state.isPicking = false;
         });
-    </script>
+    }
+
+    function syncData() {
+        loadTasks();
+        _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadTasks).subscribe();
+    }
+
+    async function loadTasks() {
+        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        const feed = document.getElementById('list-feed');
+        const hist = document.getElementById('p-history');
+        feed.innerHTML = ''; hist.innerHTML = '';
+
+        tasks?.forEach(t => {
+            const isMyTask = t.client_id === u.id || t.worker_id === u.id;
+            const card = createCard(t);
+            
+            if (t.status === 'searching') {
+                feed.appendChild(card);
+                addMarker(t);
+            } else if (isMyTask) {
+                hist.appendChild(card);
+            }
+        });
+    }
+
+    function createCard(t) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        const statusColors = { searching: '#007AFF', active: '#FF9500', completed: '#34C759' };
+        
+        div.innerHTML = `
+            <span class="badge" style="background:${statusColors[t.status]}15; color:${statusColors[t.status]}">${t.status}</span>
+            <div style="display:flex; justify-content:space-between;">
+                <b>${t.title}</b>
+                <span style="color:var(--p); font-weight:800;">${t.price} ₽</span>
+            </div>
+            <p style="font-size:13px; opacity:0.6; margin:8px 0;">${t.description || ''}</p>
+        `;
+
+        if (t.status === 'searching' && u.role === 'worker') {
+            const b = document.createElement('button'); b.className = 'btn btn-p'; b.innerText = 'Принять';
+            b.onclick = () => takeTask(t.id); div.appendChild(b);
+        }
+
+        if (t.status === 'active' && (t.client_id === u.id || t.worker_id === u.id)) {
+            const b = document.createElement('button'); b.className = 'btn btn-o'; b.innerText = '💬 Чат';
+            b.onclick = () => openChat(t.id, t.title); div.appendChild(b);
+        }
+        
+        return div;
+    }
+
+    async function takeTask(id) {
+        await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id);
+        showToast("Вы приняли заказ! Напишите заказчику в чате.");
+    }
+
+    // --- HELPERS ---
+    function startPicking() { state.isPicking = true; closeOverlay(); showToast("Кликните на карту"); }
+    async function createTask() {
+        const title = document.getElementById('c-title').value;
+        const desc = document.getElementById('c-desc').value;
+        const price = document.getElementById('c-price').value;
+        await _supabase.from('tasks').insert([{ title, description: desc, price, client_id: u.id, lat: state.pickCoords.lat, lon: state.pickCoords.lng }]);
+        closeOverlay(); showToast("Заказ опубликован!");
+    }
+    
+    function addMarker(t) {
+        if (state.markers[t.id]) return;
+        state.markers[t.id] = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(t.title);
+    }
+
+    function openOverlay(id) { document.getElementById(id).classList.add('active'); }
+    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); }
+    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(() => t.style.display='none', 3000); }
+    async function signOut() { await _supabase.auth.signOut(); location.reload(); }
+
+    checkUser();
+</script>
 </body>
 </html>
