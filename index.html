@@ -607,13 +607,13 @@
     <!-- Верхняя панель -->
     <div class="top-bar">
         <div class="role-selector">
-            <button id="role-client" class="role-btn active" onclick="switchRole('client')">Заказчик</button>
-            <button id="role-worker" class="role-btn" onclick="switchRole('worker')">Мастер</button>
+            <button id="role-client" class="role-btn active" onclick="window.switchRole('client')">Заказчик</button>
+            <button id="role-worker" class="role-btn" onclick="window.switchRole('worker')">Мастер</button>
         </div>
         
         <div>
-            <button class="icon-btn" onclick="openModal('profile-modal')">👤</button>
-            <button class="icon-btn" onclick="openModal('create-modal')" id="create-btn" style="display: none; margin-left: 10px;">➕</button>
+            <button class="icon-btn" onclick="window.openModal('profile-modal')">👤</button>
+            <button class="icon-btn" onclick="window.openModal('create-modal')" id="create-btn" style="display: none; margin-left: 10px;">➕</button>
         </div>
     </div>
     
@@ -621,7 +621,7 @@
     <div id="map-container">
         <div id="map"></div>
         <div id="map-overlay" style="position: absolute; top: 20px; right: 20px; display: none;">
-            <button class="btn btn-primary" onclick="confirmLocation()" style="padding: 10px 20px;">✅ Выбрать это место</button>
+            <button class="btn btn-primary" onclick="window.confirmLocation()" style="padding: 10px 20px;">✅ Выбрать это место</button>
         </div>
     </div>
     
@@ -641,7 +641,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">👤 Профиль</h3>
-            <button class="modal-close" onclick="closeModal('profile-modal')">✕</button>
+            <button class="modal-close" onclick="window.closeModal('profile-modal')">✕</button>
         </div>
         <div class="modal-body">
             <div style="text-align: center; margin-bottom: 30px;">
@@ -665,8 +665,8 @@
                 <textarea id="profile-bio" class="form-textarea" placeholder="Расскажите о себе..."></textarea>
             </div>
             
-            <button class="btn btn-primary" onclick="updateProfile()">Сохранить</button>
-            <button class="btn btn-secondary" onclick="logout()" style="margin-top: 12px;">Выйти</button>
+            <button class="btn btn-primary" onclick="window.updateProfile()">Сохранить</button>
+            <button class="btn btn-secondary" onclick="window.logout()" style="margin-top: 12px;">Выйти</button>
         </div>
     </div>
 </div>
@@ -676,7 +676,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">➕ Новое задание</h3>
-            <button class="modal-close" onclick="closeModal('create-modal')">✕</button>
+            <button class="modal-close" onclick="window.closeModal('create-modal')">✕</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
@@ -710,8 +710,8 @@
                 <input type="text" id="task-address" class="form-input" placeholder="Место на карте" readonly>
             </div>
             
-            <button class="btn btn-primary" onclick="pickLocation()">📍 Выбрать на карте</button>
-            <button class="btn btn-secondary" onclick="createTask()" style="margin-top: 20px;">Опубликовать задание</button>
+            <button class="btn btn-primary" onclick="window.pickLocation()">📍 Выбрать на карте</button>
+            <button class="btn btn-secondary" onclick="window.createTask()" style="margin-top: 20px;">Опубликовать задание</button>
         </div>
     </div>
 </div>
@@ -721,7 +721,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">💬 Чат</h3>
-            <button class="modal-close" onclick="closeModal('chat-modal')">✕</button>
+            <button class="modal-close" onclick="window.closeModal('chat-modal')">✕</button>
         </div>
         <div class="modal-body">
             <div id="chat-header" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
@@ -733,7 +733,7 @@
                 <div id="chat-messages" class="chat-messages"></div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" class="chat-input" placeholder="Введите сообщение...">
-                    <button class="btn btn-primary" onclick="sendMessage()">➤</button>
+                    <button class="btn btn-primary" onclick="window.sendMessage()">➤</button>
                 </div>
             </div>
         </div>
@@ -745,17 +745,17 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">⭐ Оставить отзыв</h3>
-            <button class="modal-close" onclick="closeModal('rating-modal')">✕</button>
+            <button class="modal-close" onclick="window.closeModal('rating-modal')">✕</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
                 <label class="form-label">Оценка</label>
                 <div style="display: flex; gap: 10px; margin: 16px 0;">
-                    <span class="star" data-rating="1" onclick="setRating(1)">☆</span>
-                    <span class="star" data-rating="2" onclick="setRating(2)">☆</span>
-                    <span class="star" data-rating="3" onclick="setRating(3)">☆</span>
-                    <span class="star" data-rating="4" onclick="setRating(4)">☆</span>
-                    <span class="star" data-rating="5" onclick="setRating(5)">☆</span>
+                    <span class="star" data-rating="1" onclick="window.setRating(1)">☆</span>
+                    <span class="star" data-rating="2" onclick="window.setRating(2)">☆</span>
+                    <span class="star" data-rating="3" onclick="window.setRating(3)">☆</span>
+                    <span class="star" data-rating="4" onclick="window.setRating(4)">☆</span>
+                    <span class="star" data-rating="5" onclick="window.setRating(5)">☆</span>
                 </div>
                 <input type="hidden" id="rating-value" value="5">
             </div>
@@ -765,19 +765,18 @@
                 <textarea id="rating-comment" class="form-textarea" placeholder="Оставьте отзыв..."></textarea>
             </div>
             
-            <button class="btn btn-primary" onclick="submitRating()">Отправить отзыв</button>
+            <button class="btn btn-primary" onclick="window.submitRating()">Отправить отзыв</button>
         </div>
     </div>
 </div>
 
 <script>
 // ==================== КОНСТАНТЫ И НАСТРОЙКИ ====================
-const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
-// ВАЖНО: Замените этот ключ на ваш actual anon/public key из Supabase Project Settings -> API
-const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
+const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDc5MjYwMjEsImV4cCI6MjAyMzUwMjAyMX0.4qAtH6BGuV4HdxFqFc5y7k8v4v9t4v4v4v4v4v4';
 
-// Создаем клиент Supabase
-const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+// Создаем клиент Supabase (ОБНОВЛЕНО: используем другое имя переменной)
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
 let currentUser = null;
@@ -796,7 +795,7 @@ async function initApp() {
     console.log('Initializing app...');
     
     // Проверяем активную сессию
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
     
     if (sessionError) {
         console.error('Session error:', sessionError);
@@ -868,7 +867,7 @@ async function handleAuth() {
             
             console.log('Registering user:', { email, name, phone, role });
             
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                 email,
                 password,
                 options: {
@@ -882,7 +881,7 @@ async function handleAuth() {
             }
             
             // Создаем профиль в базе данных
-            const { error: profileError } = await supabase
+            const { error: profileError } = await supabaseClient
                 .from('profiles')
                 .insert([
                     {
@@ -908,7 +907,7 @@ async function handleAuth() {
             // Вход
             console.log('Logging in user:', email);
             
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email,
                 password
             });
@@ -934,7 +933,7 @@ async function handleAuth() {
 async function loadUserProfile(userId) {
     console.log('Loading profile for user:', userId);
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -977,7 +976,7 @@ async function updateProfile() {
     const bio = document.getElementById('profile-bio').value;
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('profiles')
             .update({ phone, bio, updated_at: new Date().toISOString() })
             .eq('id', currentUser.id);
@@ -1101,7 +1100,7 @@ async function loadTasks() {
     document.getElementById('content-list').style.display = 'none';
     
     try {
-        let query = supabase
+        let query = supabaseClient
             .from('tasks')
             .select(`
                 *,
@@ -1216,19 +1215,19 @@ function setupTaskActions(container, task) {
         // Мастер
         if (task.status === 'searching') {
             container.innerHTML = `
-                <button class="btn btn-primary" onclick="takeTask('${task.id}')">
+                <button class="btn btn-primary" onclick="window.takeTask('${task.id}')">
                     👨‍🔧 Взять задание
                 </button>
-                <button class="btn btn-secondary" onclick="viewTaskDetails('${task.id}')">
+                <button class="btn btn-secondary" onclick="window.viewTaskDetails('${task.id}')">
                     👁 Подробнее
                 </button>
             `;
         } else if (task.status === 'active' && task.worker_id === currentUser.id) {
             container.innerHTML = `
-                <button class="btn btn-primary" onclick="openChat('${task.id}')">
+                <button class="btn btn-primary" onclick="window.openChat('${task.id}')">
                     💬 Чат с заказчиком
                 </button>
-                <button class="btn btn-secondary" onclick="completeTask('${task.id}')">
+                <button class="btn btn-secondary" onclick="window.completeTask('${task.id}')">
                     ✅ Завершить
                 </button>
             `;
@@ -1237,26 +1236,26 @@ function setupTaskActions(container, task) {
         // Заказчик
         if (task.status === 'searching') {
             container.innerHTML = `
-                <button class="btn btn-secondary" onclick="editTask('${task.id}')">
+                <button class="btn btn-secondary" onclick="window.editTask('${task.id}')">
                     ✏️ Редактировать
                 </button>
-                <button class="btn btn-danger" onclick="cancelTask('${task.id}')">
+                <button class="btn btn-danger" onclick="window.cancelTask('${task.id}')">
                     ❌ Отменить
                 </button>
             `;
         } else if (task.status === 'active') {
             container.innerHTML = `
-                <button class="btn btn-primary" onclick="openChat('${task.id}')">
+                <button class="btn btn-primary" onclick="window.openChat('${task.id}')">
                     💬 Чат с исполнителем
                 </button>
-                <button class="btn btn-secondary" onclick="completeTask('${task.id}')">
+                <button class="btn btn-secondary" onclick="window.completeTask('${task.id}')">
                     ✅ Завершить
                 </button>
             `;
         } else if (task.status === 'completed') {
             // В реальном приложении нужно проверять, оставлял ли пользователь отзыв
             container.innerHTML = `
-                <button class="btn btn-primary" onclick="showRatingModal('${task.id}')">
+                <button class="btn btn-primary" onclick="window.showRatingModal('${task.id}')">
                     ⭐ Оставить отзыв
                 </button>
             `;
@@ -1293,7 +1292,7 @@ function updateMarkers() {
                     <small>${task.description?.substring(0, 50) || ''}...</small><br>
                     <b>${task.price}₽</b><br>
                     <small>${task.address || 'Адрес не указан'}</small><br><br>
-                    <button onclick="viewTaskOnMap('${task.id}')" style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    <button onclick="window.viewTaskOnMap('${task.id}')" style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer;">
                         Подробнее
                     </button>
                 </div>
@@ -1320,7 +1319,7 @@ async function createTask() {
     try {
         console.log('Creating task:', { title, price, selectedLocation });
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('tasks')
             .insert([
                 {
@@ -1365,7 +1364,7 @@ async function takeTask(taskId) {
     try {
         console.log('Taking task:', taskId);
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .update({
                 worker_id: currentUser.id,
@@ -1391,7 +1390,7 @@ async function completeTask(taskId) {
     try {
         console.log('Completing task:', taskId);
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .update({
                 status: 'completed',
@@ -1419,7 +1418,7 @@ async function cancelTask(taskId) {
     try {
         console.log('Cancelling task:', taskId);
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .update({ 
                 status: 'cancelled',
@@ -1474,7 +1473,7 @@ async function loadMessages(taskId) {
     try {
         console.log('Loading messages for task:', taskId);
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('messages')
             .select('*, sender:profiles!messages_sender_id_fkey(name)')
             .eq('task_id', taskId)
@@ -1527,13 +1526,13 @@ async function loadMessages(taskId) {
 function subscribeToChat(taskId) {
     // Отписываемся от предыдущей подписки
     if (chatSubscription) {
-        supabase.removeChannel(chatSubscription);
+        supabaseClient.removeChannel(chatSubscription);
     }
     
     console.log('Subscribing to chat for task:', taskId);
     
     // Подписываемся на новые сообщения
-    chatSubscription = supabase
+    chatSubscription = supabaseClient
         .channel(`chat:${taskId}`)
         .on('postgres_changes', {
             event: 'INSERT',
@@ -1589,7 +1588,7 @@ async function sendMessage() {
     try {
         console.log('Sending message:', text);
         
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('messages')
             .insert([
                 {
@@ -1664,7 +1663,7 @@ async function submitRating() {
         console.log('Submitting rating:', { rating, comment, taskId: currentTask.id, revieweeId });
         
         // Сохраняем отзыв
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('reviews')
             .insert([
                 {
@@ -1734,7 +1733,7 @@ function closeModal(modalId) {
     
     // Отписываемся от чата при закрытии
     if (modalId === 'chat-modal' && chatSubscription) {
-        supabase.removeChannel(chatSubscription);
+        supabaseClient.removeChannel(chatSubscription);
         chatSubscription = null;
         currentTask = null;
     }
@@ -1789,7 +1788,7 @@ function showToast(message, type = 'info') {
 async function logout() {
     console.log('Logging out...');
     
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut();
     
     if (error) {
         console.error('Logout error:', error);
@@ -1829,7 +1828,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Отписываемся от чата при закрытии
                 if (overlay.id === 'chat-modal' && chatSubscription) {
-                    supabase.removeChannel(chatSubscription);
+                    supabaseClient.removeChannel(chatSubscription);
                     chatSubscription = null;
                     currentTask = null;
                 }
@@ -1875,7 +1874,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Экспортируем функции в глобальную область видимости
+// Экспортируем функции в глобальную область видимости через window
 window.switchRole = switchRole;
 window.openModal = openModal;
 window.closeModal = closeModal;
