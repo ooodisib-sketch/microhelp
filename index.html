@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MicroHelp PRO | Enterprise</title>
+    <title>MicroHelp PRO | Master Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -16,7 +16,6 @@
         
         #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         
-        /* UI Elements */
         .role-selector { position: fixed; top: 25px; left: 50%; transform: translateX(-50%); background: white; padding: 6px; border-radius: 40px; z-index: 5000; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; pointer-events: auto; }
         .role-opt { padding: 8px 16px; border-radius: 30px; font-size: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; color: #888; }
         .role-opt.active { background: var(--p); color: white; }
@@ -28,26 +27,29 @@
         #map { height: 35%; width: 100%; z-index: 1; }
         #content-container { height: 65%; background: var(--bg); border-top-left-radius: 30px; border-top-right-radius: 30px; margin-top: -30px; z-index: 100; position: relative; overflow-y: auto; padding: 25px 20px; box-shadow: 0 -15px 30px rgba(0,0,0,0.05); }
 
-        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.02); }
+        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.02); scroll-margin-top: 100px; }
         .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
         
-        .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-p { background: var(--p); color: white; }
         .btn-o { background: var(--grey); color: var(--text); }
-        .btn-red { color: var(--red); background: #FFF0F0; font-size: 12px; margin-top: 10px; }
+        .btn-g { background: var(--green); color: white; }
+        .btn-red { color: var(--red); background: #FFF0F0; font-size: 11px; }
 
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
         .overlay.active { transform: translateY(0); }
         .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
 
-        /* Messenger Style Chat */
         #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #F8F9FB; }
-        .msg { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 14px; position: relative; line-height: 1.4; }
-        .msg-meta { font-size: 10px; font-weight: 800; margin-bottom: 4px; display: block; text-transform: uppercase; opacity: 0.6; }
+        .msg { padding: 12px 16px; border-radius: 18px; max-width: 85%; font-size: 14px; line-height: 1.4; }
         .msg.me { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .msg.other { align-self: flex-start; background: white; color: var(--text); border-bottom-left-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .msg.other { align-self: flex-start; background: white; color: var(--text); border-bottom-left-radius: 4px; }
+        .msg-meta { font-size: 9px; font-weight: 800; margin-bottom: 4px; display: block; opacity: 0.6; }
 
-        #scr-auth { position: fixed; inset: 0; background: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .star-row { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+        .star { font-size: 30px; color: #DDD; cursor: pointer; }
+        .star.active { color: var(--orange); }
+
         input, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid #DDD; margin-bottom: 12px; box-sizing: border-box; font-family: inherit; font-size: 16px; }
     </style>
 </head>
@@ -60,7 +62,7 @@
     <div class="role-opt" id="opt-worker" onclick="updateRole('worker')">Мастер</div>
 </div>
 
-<div id="scr-auth">
+<div id="scr-auth" style="position:fixed; inset:0; background:white; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center;">
     <div style="font-size: 60px;">🤝</div>
     <h1 style="font-weight: 900; color: var(--p); margin: 0;">MicroHelp PRO</h1>
     <div style="width: 100%; max-width: 320px; margin-top: 25px;">
@@ -87,19 +89,6 @@
     </div>
 </div>
 
-<div id="ov-profile" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Кабинет</div>
-    <div style="padding: 20px; overflow-y:auto">
-        <div class="card" style="text-align: center;">
-            <div style="font-size: 40px;">👤</div>
-            <h2 id="p-name">...</h2>
-            <button class="btn btn-o" onclick="signOut()" style="color:var(--red); height: 40px; margin-top: 10px;">Выйти</button>
-        </div>
-        <h3>История моих дел</h3>
-        <div id="p-history"></div>
-    </div>
-</div>
-
 <div id="ov-create" class="overlay">
     <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Новый заказ</div>
     <div style="padding:20px">
@@ -120,8 +109,8 @@
     </div>
     <div id="chat-box"></div>
     <div style="padding:20px; background:white; border-top:1px solid #EEE;">
-        <div id="chat-contact-box" style="margin-bottom:15px; background:#F2F2F7; padding:12px; border-radius:12px; display:none; justify-content:space-between; align-items:center;">
-            <span id="display-phone" style="font-weight:700; font-size:14px;"></span>
+        <div id="chat-contact-box" style="margin-bottom:12px; background:#F2F2F7; padding:10px; border-radius:12px; display:none; justify-content:space-between; align-items:center;">
+            <span id="display-phone" style="font-weight:700; font-size:14px; color:var(--p)">+7...</span>
             <button onclick="copyPhone()" style="border:none; background:var(--p); color:white; padding:6px 12px; border-radius:8px; font-size:11px;">Копировать</button>
         </div>
         <div style="display:flex; gap:10px">
@@ -131,14 +120,22 @@
     </div>
 </div>
 
-<div id="ov-report" class="overlay" style="background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
-    <div class="card" style="width:85%">
-        <h3>Жалоба в арбитраж</h3>
-        <textarea id="rep-comment" placeholder="Опишите проблему..."></textarea>
-        <div style="display:flex; gap:10px">
-            <button class="btn btn-o" onclick="closeOverlay()">Отмена</button>
-            <button class="btn btn-p" style="background:var(--red)" onclick="submitReport()">Отправить</button>
+<div id="ov-review" class="overlay" style="background:rgba(0,0,0,0.6); justify-content:center; align-items:center;">
+    <div class="card" style="width:85%; text-align:center">
+        <h3 id="rev-title">Оцените работу</h3>
+        <div class="star-row">
+            <span class="star" onclick="setStars(1)">★</span><span class="star" onclick="setStars(2)">★</span><span class="star" onclick="setStars(3)">★</span><span class="star" onclick="setStars(4)">★</span><span class="star" onclick="setStars(5)">★</span>
         </div>
+        <textarea id="rev-comment" placeholder="Ваш отзыв..."></textarea>
+        <button class="btn btn-p" onclick="submitReview()">Отправить отзыв</button>
+    </div>
+</div>
+
+<div id="ov-profile" class="overlay">
+    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Кабинет</div>
+    <div style="padding:20px; overflow-y:auto">
+        <div id="p-history"></div>
+        <button class="btn btn-o" onclick="signOut()" style="color:var(--red); margin-top:20px">Выйти</button>
     </div>
 </div>
 
@@ -148,14 +145,7 @@
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
 
     let u = null, isReg = false;
-    let state = { map: null, markers: {}, isPicking: false, pickCoords: null, activeTask: null, reportTaskId: null };
-
-    // --- АВТОРИЗАЦИЯ ---
-    function toggleReg() {
-        isReg = !isReg;
-        document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
-        document.getElementById('btn-auth').innerText = isReg ? 'Создать аккаунт' : 'Войти';
-    }
+    let state = { map: null, markers: {}, isPicking: false, pickCoords: null, activeTask: null, stars: 5 };
 
     async function handleAuth() {
         const email = document.getElementById('auth-email').value;
@@ -166,7 +156,7 @@
             const { data, error } = await _supabase.auth.signUp({ email, password: pass, options: { data: { name, phone } } });
             if(error) return alert(error.message);
             await _supabase.from('profiles').insert([{ id: data.user.id, name, phone, role: 'client' }]);
-            alert("Готово! Войдите."); toggleReg();
+            alert("Успешно! Войдите."); toggleReg();
         } else {
             const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
             if(error) return alert(error.message);
@@ -182,81 +172,76 @@
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('main-layout').style.display = 'flex';
         document.getElementById('role-ui').style.display = 'flex';
-        
         setupMap();
-        renderUI();
         syncData();
     }
 
-    // --- КАРТА ---
     function setupMap() {
         if(state.map) return;
         state.map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
         state.map.locate({setView: true, maxZoom: 15});
-
         state.map.on('click', e => {
             if(!state.isPicking) return;
             state.pickCoords = e.latlng;
             openOverlay('ov-create');
             document.getElementById('create-form').style.display = 'block';
-            document.getElementById('pick-btn').innerText = '✅ Место выбрано';
             state.isPicking = false;
         });
     }
 
-    // --- ДАННЫЕ И ФИЛЬТРЫ ---
     function syncData() {
         loadData();
-        _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
-        _supabase.channel('msg-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-            if(state.activeTask && payload.new.task_id === state.activeTask.id) loadMsgs();
+        _supabase.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
+        _supabase.channel('msgs').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
+            if(state.activeTask && p.new.task_id === state.activeTask.id) loadMsgs();
         }).subscribe();
     }
 
     async function loadData() {
-        const { data: tasks } = await _supabase.from('tasks').select('*, profiles!tasks_client_id_fkey(name, phone, rating), worker:profiles!tasks_worker_id_fkey(name, phone, rating)').order('created_at', {ascending: false});
+        // Запрос с подгрузкой телефонов
+        const { data: tasks } = await _supabase.from('tasks')
+            .select('*, profiles!tasks_client_id_fkey(name, phone, rating), worker:profiles!tasks_worker_id_fkey(name, phone, rating)')
+            .order('created_at', {ascending: false});
+            
         const feed = document.getElementById('list-feed');
         const hist = document.getElementById('p-history');
         feed.innerHTML = ''; hist.innerHTML = '';
         Object.values(state.markers).forEach(m => state.map.removeLayer(m));
 
         tasks?.forEach(t => {
-            const isMyTask = t.client_id === u.id;
-            const isAssignedToMe = t.worker_id === u.id;
-            
-            // 1) Логика "Заказчик видит только свои", "Мастер видит все доступные"
+            const isOwner = t.client_id === u.id;
+            const isWorker = t.worker_id === u.id;
+            const card = createCard(t);
+
             if(u.role === 'client') {
-                if(isMyTask && t.status !== 'completed') feed.appendChild(createCard(t));
+                if(isOwner && t.status !== 'completed') feed.appendChild(card);
                 document.getElementById('feed-title').innerText = "Мои заказы";
             } else {
-                if(t.status === 'searching' && !isMyTask) feed.appendChild(createCard(t));
+                if(t.status === 'searching') {
+                    feed.appendChild(card);
+                    const m = L.marker([t.lat, t.lon]).addTo(state.map)
+                        .bindPopup(`<b>${t.title}</b><br>${t.price} ₽<br><button onclick="scrollToTask('${t.id}')" style="background:var(--p); color:white; border:none; padding:5px 10px; border-radius:5px; margin-top:5px; cursor:pointer">Подробнее</button>`);
+                    state.markers[t.id] = m;
+                }
                 document.getElementById('feed-title').innerText = "Доступные заказы";
             }
-
-            if(isMyTask || isAssignedToMe) hist.appendChild(createCard(t));
-            
-            // Маркеры только для поиска
-            if(t.status === 'searching') {
-                state.markers[t.id] = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(t.title);
-            }
+            if(isOwner || isWorker) hist.appendChild(createCard(t, true));
         });
-        document.getElementById('p-name').innerText = u.name;
     }
 
-    function createCard(t) {
-        const div = document.createElement('div'); div.className = 'card';
+    function createCard(t, isHist = false) {
+        const div = document.createElement('div'); div.className = 'card'; div.id = 'task-' + t.id;
         const st = { searching: ['#007AFF', 'Поиск'], active: ['#FF9500', 'В работе'], completed: ['#34C759', 'Завершено'] };
-        const clientName = t.profiles?.name || 'Заказчик';
-        const clientRating = t.profiles?.rating || '5.0';
+        const other = u.id === t.client_id ? t.worker : t.profiles;
 
         div.innerHTML = `
             <span class="badge" style="background:${st[t.status][0]}15; color:${st[t.status][0]}">${st[t.status][1]}</span>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div><b>${t.title}</b><div style="font-size:11px; opacity:0.5; margin-top:2px;">👤 ${clientName} • ⭐ ${clientRating}</div></div>
+            <div style="display:flex; justify-content:space-between">
+                <div><b>${t.title}</b><div style="font-size:11px; opacity:0.5">👤 ${t.profiles?.name} • ⭐ ${t.profiles?.rating || '5.0'}</div></div>
                 <b style="color:var(--p)">${t.price} ₽</b>
             </div>
-            <p style="font-size:13px; opacity:0.7; margin:12px 0">${t.description || ''}</p>
+            <p style="font-size:13px; opacity:0.7; margin:10px 0">${t.description || ''}</p>
         `;
 
         if(t.status === 'searching' && u.role === 'worker') {
@@ -265,95 +250,90 @@
         }
 
         if(t.status === 'active' && (t.client_id === u.id || t.worker_id === u.id)) {
-            const btnRow = document.createElement('div'); btnRow.style.display='flex'; btnRow.style.gap='8px';
-            const chat = document.createElement('button'); chat.className='btn btn-o'; chat.innerText='💬 Чат';
-            chat.onclick = () => openChat(t); btnRow.appendChild(chat);
+            const row = document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.flexWrap='wrap';
             
-            const rep = document.createElement('button'); rep.className='btn btn-red'; rep.innerText='Жалоба';
-            rep.onclick = () => { state.reportTaskId = t.id; openOverlay('ov-report'); }; btnRow.appendChild(rep);
-            div.appendChild(btnRow);
+            const btnChat = document.createElement('button'); btnChat.className='btn btn-o'; btnChat.style.flex='1'; btnChat.innerText='💬 Чат';
+            btnChat.onclick = () => openChat(t); row.appendChild(btnChat);
+
+            const btnRep = document.createElement('button'); btnRep.className='btn btn-red'; btnRep.innerText='Жалоба';
+            btnRep.onclick = () => alert("Жалоба отправлена в арбитраж"); row.appendChild(btnRep);
+
+            if(u.role === 'client') {
+                const btnFin = document.createElement('button'); btnFin.className='btn btn-g'; btnFin.style.width='100%'; btnFin.innerText='✅ Завершить и оплатить';
+                btnFin.onclick = () => finishTask(t.id); row.appendChild(btnFin);
+            }
+            div.appendChild(row);
+        }
+
+        if(t.status === 'completed' && isHist) {
+            const reviewed = u.role === 'client' ? t.client_reviewed : t.worker_reviewed;
+            if(!reviewed) {
+                const b = document.createElement('button'); b.className='btn btn-o'; b.innerText='⭐ Оценить партнера';
+                b.onclick = () => { state.activeTask = t; openOverlay('ov-review'); }; div.appendChild(b);
+            }
         }
         return div;
     }
 
-    // --- ЧАТ И МЕССЕНДЖЕР ---
     function openChat(t) {
         state.activeTask = t;
         const other = u.id === t.client_id ? t.worker : t.profiles;
-        document.getElementById('chat-title').innerText = t.title;
-        document.getElementById('chat-partner').innerText = other ? other.name : 'Собеседник';
-        
-        // Показать номер телефона
-        if(other) {
+        document.getElementById('chat-partner').innerText = other?.name || 'Партнер';
+        if(other?.phone) {
             document.getElementById('chat-contact-box').style.display = 'flex';
             document.getElementById('display-phone').innerText = other.phone;
         }
-        
-        openOverlay('ov-chat');
-        loadMsgs();
+        openOverlay('ov-chat'); loadMsgs();
     }
 
-    async function sendMsg() {
-        const text = document.getElementById('chat-inp').value; if(!text) return;
-        await _supabase.from('messages').insert([{ task_id: state.activeTask.id, sender_id: u.id, text }]);
-        document.getElementById('chat-inp').value = '';
+    async function finishTask(id) {
+        if(!confirm("Завершить заказ?")) return;
+        await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+        showToast("Заказ завершен!"); loadData();
     }
 
-    async function loadMsgs() {
-        const { data } = await _supabase.from('messages').select('*, profiles(name, role)').eq('task_id', state.activeTask.id).order('created_at');
-        const box = document.getElementById('chat-box'); box.innerHTML = '';
-        data?.forEach(m => {
-            const isMe = m.sender_id === u.id;
-            const d = document.createElement('div'); d.className = `msg ${isMe ? 'me' : 'other'}`;
-            const roleName = m.sender_id === state.activeTask.client_id ? 'Заказчик' : 'Мастер';
-            d.innerHTML = `<span class="msg-meta">${roleName}_${m.profiles?.name}</span>${m.text}`;
-            box.appendChild(d);
-        });
-        box.scrollTop = box.scrollHeight;
+    async function submitReview() {
+        const field = u.role === 'client' ? 'client_reviewed' : 'worker_reviewed';
+        const upd = {}; upd[field] = true;
+        await _supabase.from('tasks').update(upd).eq('id', state.activeTask.id);
+        closeOverlay(); showToast("Отзыв сохранен!"); loadData();
     }
 
-    // --- ФУНКЦИИ ---
-    async function updateRole(r) {
-        u.role = r;
-        await _supabase.from('profiles').update({ role: r }).eq('id', u.id);
-        renderUI(); loadData();
-        showToast(`Режим: ${r === 'client' ? 'Заказчик' : 'Мастер'}`);
-    }
-
-    function renderUI() {
-        document.getElementById('opt-client').classList.toggle('active', u.role === 'client');
-        document.getElementById('opt-worker').classList.toggle('active', u.role === 'worker');
-        document.getElementById('btn-add-ui').style.display = u.role === 'client' ? 'flex' : 'none';
-    }
-
-    async function takeTask(id) {
-        await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id);
-        showToast("Заказ принят!");
-    }
-
-    async function submitReport() {
-        const comment = document.getElementById('rep-comment').value;
-        showToast("Жалоба отправлена в арбитраж");
-        closeOverlay();
-    }
-
-    function copyPhone() {
-        navigator.clipboard.writeText(document.getElementById('display-phone').innerText);
-        showToast("Номер скопирован!");
-    }
-
-    function preparePick() { state.isPicking = true; closeOverlay(); showToast("Выберите точку на карте"); }
+    // Хелперы
+    function scrollToTask(id) { const el = document.getElementById('task-'+id); if(el) el.scrollIntoView({behavior:'smooth'}); }
+    function copyPhone() { navigator.clipboard.writeText(document.getElementById('display-phone').innerText); showToast("Скопировано!"); }
+    function setStars(n) { state.stars = n; document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('active', i < n)); }
+    function preparePick() { state.isPicking = true; closeOverlay(); showToast("Кликните на карту"); }
     async function saveTask() {
         const title = document.getElementById('c-title').value;
         const price = document.getElementById('c-price').value;
         const desc = document.getElementById('c-desc').value;
         await _supabase.from('tasks').insert([{ title, price, description: desc, lat: state.pickCoords.lat, lon: state.pickCoords.lng, client_id: u.id }]);
+        document.getElementById('c-title').value = ''; document.getElementById('c-price').value = ''; document.getElementById('c-desc').value = '';
         closeOverlay(); showToast("Опубликовано!");
     }
-
+    async function takeTask(id) { await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id); showToast("Принято!"); }
+    async function sendMsg() { 
+        const text = document.getElementById('chat-inp').value; if(!text) return;
+        await _supabase.from('messages').insert([{ task_id: state.activeTask.id, sender_id: u.id, text }]);
+        document.getElementById('chat-inp').value = ''; 
+    }
+    async function loadMsgs() {
+        const { data } = await _supabase.from('messages').select('*, profiles(name)').eq('task_id', state.activeTask.id).order('created_at');
+        const box = document.getElementById('chat-box'); box.innerHTML = '';
+        data?.forEach(m => {
+            const d = document.createElement('div'); d.className = `msg ${m.sender_id === u.id ? 'me' : 'other'}`;
+            const label = m.sender_id === state.activeTask.client_id ? 'ЗАКАЗЧИК' : 'МАСТЕР';
+            d.innerHTML = `<span class="msg-meta">${label}_${m.profiles?.name}</span>${m.text}`;
+            box.appendChild(d);
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+    async function updateRole(r) { u.role = r; await _supabase.from('profiles').update({ role: r }).eq('id', u.id); document.getElementById('opt-client').classList.toggle('active', r==='client'); document.getElementById('opt-worker').classList.toggle('active', r==='worker'); document.getElementById('btn-add-ui').style.display = r==='client'?'flex':'none'; loadData(); }
     function openOverlay(id) { document.getElementById(id).classList.add('active'); }
     function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); }
     function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(()=>t.style.display='none', 3000); }
+    function toggleReg() { isReg = !isReg; document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none'; document.getElementById('btn-auth').innerText = isReg ? 'Регистрация' : 'Войти'; }
     function signOut() { _supabase.auth.signOut().then(()=>location.reload()); }
     window.onload = initApp;
 </script>
