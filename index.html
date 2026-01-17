@@ -13,56 +13,42 @@
     <style>
         :root { --p: #007AFF; --bg: #F2F2F7; --text: #000; --w: #fff; --grey: #E5E5EA; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-        
         #map { height: 45%; width: 100%; z-index: 1; }
         #panel { height: 55%; background: var(--w); border-radius: 24px 24px 0 0; margin-top: -20px; z-index: 10; position: relative; display: flex; flex-direction: column; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); }
-        
         #feed { flex: 1; overflow-y: auto; padding: 20px; }
         .card { background: var(--w); border: 1px solid #EEE; padding: 16px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
         .card h3 { margin: 0 0 5px 0; font-size: 16px; }
         .price { float: right; color: var(--p); font-weight: 800; }
         .status { font-size:12px; color:#888; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; display: block;}
-        
         .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         .btn-p { background: var(--p); color: white; }
         .btn-s { background: var(--grey); color: black; }
-        .btn:active { transform: scale(0.98); }
-        
         input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--p); }
-
         #auth-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
         .role-selector { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
         .role-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
         .role-btn.active { border: 2px solid var(--p); color: var(--p); font-weight: bold; background: #f0f7ff; }
-
         .overlay { position: fixed; inset: 0; background: white; z-index: 5000; transform: translateY(100%); transition: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
         .overlay.open { transform: translateY(0); }
         .header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; font-weight: 800; font-size: 18px; background: #fff; }
-        
         #chat-msgs { flex: 1; overflow-y: auto; padding: 15px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
-        .msg { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
-        .msg.me { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .msg.other { align-self: flex-start; background: white; border-bottom-left-radius: 4px; border: 1px solid #ddd; }
-        #chat-input-area { padding: 10px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; }
-        
-        .fab { position: fixed; top: 20px; right: 20px; width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 2000; font-size: 20px; cursor: pointer; }
+        .msg { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 15px; }
+        .msg.me { align-self: flex-end; background: var(--p); color: white; }
+        .msg.other { align-self: flex-start; background: white; border: 1px solid #ddd; }
+        .fab { position: fixed; top: 20px; right: 20px; width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 2000; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div style="font-size: 60px; margin-bottom: 10px;">🤝</div>
-    <h1 style="margin: 0 0 10px 0;">MicroHelp PRO</h1>
-    <p style="color:#888; margin-bottom: 30px;">Вход в систему</p>
-    
+    <h1>MicroHelp PRO</h1>
     <div id="login-form" style="width: 100%; max-width: 320px;">
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="pass" placeholder="Пароль">
         <button class="btn btn-p" onclick="doLogin()">Войти</button>
-        <p onclick="toggleReg()" style="color:var(--p); font-size:14px; margin-top:20px; cursor:pointer;">Нет аккаунта? Зарегистрироваться</p>
+        <p onclick="toggleReg()" style="color:var(--p); cursor:pointer; margin-top:20px;">Нет аккаунта? Зарегистрироваться</p>
     </div>
-
     <div id="reg-form" style="width: 100%; max-width: 320px; display:none;">
         <input type="text" id="r-name" placeholder="Ваше Имя">
         <input type="email" id="r-email" placeholder="Email">
@@ -72,208 +58,204 @@
             <div class="role-btn" id="role-worker" onclick="setRole('worker')">Я Исполнитель</div>
         </div>
         <button class="btn btn-p" onclick="doReg()">Создать аккаунт</button>
-        <p onclick="toggleReg()" style="color:#888; font-size:14px; margin-top:20px; cursor:pointer;">← Назад ко входу</p>
+        <p onclick="toggleReg()" style="color:#888; cursor:pointer; margin-top:20px;">Назад</p>
     </div>
 </div>
 
 <div class="fab" onclick="openProfile()">👤</div>
-
 <div id="map"></div>
 <div id="panel">
-    <div style="padding: 20px 20px 10px 20px;">
+    <div style="padding: 20px;">
         <h2 style="margin:0;">Лента заданий</h2>
-        <button id="add-btn" class="btn btn-p" onclick="startAdd()" style="margin-top:15px; display:none;">+ Создать задание</button>
+        <button id="add-btn" class="btn btn-p" onclick="startAdd()" style="display:none; margin-top:10px;">+ Создать задание</button>
     </div>
     <div id="feed"></div>
 </div>
 
 <div id="profile-ov" class="overlay">
-    <div class="header">Мой Профиль <span onclick="document.getElementById('profile-ov').classList.remove('open')" style="cursor:pointer">✕</span></div>
+    <div class="header">Мой Профиль <span onclick="closeOverlay('profile-ov')">✕</span></div>
     <div style="padding:30px; text-align:center;">
-        <div style="font-size:60px; margin-bottom:10px;">👤</div>
-        <h2 id="p-name" style="margin:0;">Загрузка...</h2>
-        <div id="p-role" style="color:#888; margin-bottom:30px; font-weight:600;">...</div>
-        <button class="btn btn-s" onclick="logout()" style="color:red;">Выйти из аккаунта</button>
-    </div>
-</div>
-
-<div id="chat-ov" class="overlay">
-    <div class="header">
-        <span id="chat-title">Чат</span> 
-        <span onclick="closeChat()" style="cursor:pointer">✕</span>
-    </div>
-    <div id="chat-msgs"></div>
-    <div id="chat-input-area">
-        <input id="msg-txt" placeholder="Написать сообщение..." style="margin:0;">
-        <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding: 0 20px;">➤</button>
+        <h2 id="p-name">Имя</h2>
+        <div id="p-role" style="color:#888;">Роль</div>
+        <button class="btn btn-s" onclick="logout()" style="color:red; margin-top:40px;">Выйти из аккаунта</button>
     </div>
 </div>
 
 <div id="add-ov" class="overlay">
-    <div class="header">Новое задание <span onclick="document.getElementById('add-ov').classList.remove('open')" style="cursor:pointer">✕</span></div>
+    <div class="header">Новое задание <span onclick="closeOverlay('add-ov')">✕</span></div>
     <div style="padding:20px;">
-        <button class="btn btn-s" id="pick-btn" onclick="pickLocation()" style="border: 2px dashed var(--p); color: var(--p);">📍 Указать место на карте</button>
-        <div id="add-form" style="opacity:0.4; pointer-events:none; margin-top:25px; transition:0.3s;">
-            <input id="n-title" placeholder="Что нужно сделать? (Например: Починить кран)">
+        <button class="btn btn-s" id="pick-btn" onclick="pickLocation()">📍 Указать место на карте</button>
+        <div id="add-form" style="opacity:0.4; pointer-events:none; margin-top:20px;">
+            <input id="n-title" placeholder="Что нужно сделать?">
             <input id="n-price" type="number" placeholder="Стоимость (₽)">
-            <button class="btn btn-p" onclick="publishTask()">Опубликовать задание</button>
+            <button class="btn btn-p" onclick="publishTask()">Опубликовать</button>
         </div>
     </div>
 </div>
 
+<div id="chat-ov" class="overlay">
+    <div class="header"><span id="chat-title">Чат</span> <span onclick="closeChat()">✕</span></div>
+    <div id="chat-msgs"></div>
+    <div style="padding:10px; display:flex; gap:10px; background:white; border-top:1px solid #eee;">
+        <input id="msg-txt" placeholder="Сообщение..." style="margin:0;">
+        <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding:0 20px;">➤</button>
+    </div>
+</div>
+
 <script>
-    // Инициализация Supabase
+    // --- Инициализация ---
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
     const supabase = window.supabase.createClient(SB_URL, SB_KEY);
-    
+
     let map, user = null, markers = {}, pickMode = false, pickCoords = null, activeChatId = null, regRole = 'client';
 
-    // --- ФУНКЦИИ В ГЛОБАЛЬНОМ WINDOW ---
+    // --- Функции (Объявлены через function, чтобы не было ошибок ReferenceError) ---
 
-    window.toggleReg = function() {
+    function toggleReg() {
         const login = document.getElementById('login-form');
         const reg = document.getElementById('reg-form');
-        if(login.style.display === 'none') {
-            login.style.display = 'block'; reg.style.display = 'none';
-        } else {
-            login.style.display = 'none'; reg.style.display = 'block';
-        }
-    };
+        login.style.display = (login.style.display === 'none') ? 'block' : 'none';
+        reg.style.display = (reg.style.display === 'none') ? 'block' : 'none';
+    }
 
-    window.setRole = function(r) {
-        regRole = r;
-        document.getElementById('role-client').className = r === 'client' ? 'role-btn active' : 'role-btn';
-        document.getElementById('role-worker').className = r === 'worker' ? 'role-btn active' : 'role-btn';
-    };
+    function setRole(role) {
+        regRole = role;
+        document.getElementById('role-client').classList.toggle('active', role === 'client');
+        document.getElementById('role-worker').classList.toggle('active', role === 'worker');
+    }
 
-    window.doReg = async function() {
+    async function doReg() {
         const email = document.getElementById('r-email').value;
-        const password = document.getElementById('r-pass').value;
+        const pass = document.getElementById('r-pass').value;
         const name = document.getElementById('r-name').value;
-        if(!email || !password || !name) return alert("Заполните все поля");
+        if(!email || !pass || !name) return alert("Заполни все поля");
 
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password: pass });
         if(error) return alert("Ошибка: " + error.message);
-        
-        const { error: pErr } = await supabase.from('profiles').insert([{ id: data.user.id, name, role: regRole }]);
-        if(pErr) alert("Ошибка профиля: " + pErr.message);
-        
+
+        // Создаем профиль в БД
+        await supabase.from('profiles').insert([{ id: data.user.id, name, role: regRole }]);
         alert("Регистрация успешна!");
         location.reload();
-    };
+    }
 
-    window.doLogin = async function() {
+    async function doLogin() {
         const email = document.getElementById('email').value;
-        const password = document.getElementById('pass').value;
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if(error) alert("Ошибка входа: " + error.message);
+        const pass = document.getElementById('pass').value;
+        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if(error) alert("Ошибка: " + error.message);
         else location.reload();
-    };
+    }
 
-    window.logout = async function() {
+    async function logout() {
         await supabase.auth.signOut();
         location.reload();
-    };
+    }
 
-    window.startAdd = () => document.getElementById('add-ov').classList.add('open');
-    
-    window.pickLocation = () => {
-        document.getElementById('add-ov').classList.remove('open');
+    function startAdd() { document.getElementById('add-ov').classList.add('open'); }
+    function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+
+    function pickLocation() {
+        closeOverlay('add-ov');
         pickMode = true;
-        alert("Коснитесь карты, чтобы выбрать место");
-    };
+        alert("Коснись карты в нужном месте");
+    }
 
-    window.publishTask = async function() {
+    async function publishTask() {
         const title = document.getElementById('n-title').value;
         const price = document.getElementById('n-price').value;
-        if(!title || !price || !pickCoords) return alert("Заполните всё");
-        await supabase.from('tasks').insert([{ title, price: parseInt(price), lat: pickCoords.lat, lon: pickCoords.lng, client_id: user.id, status: 'searching' }]);
+        if(!title || !price || !pickCoords) return alert("Заполни описание и выбери точку");
+        
+        await supabase.from('tasks').insert([{
+            title, price, lat: pickCoords.lat, lon: pickCoords.lng, 
+            client_id: user.id, status: 'searching'
+        }]);
         location.reload();
-    };
+    }
 
-    window.takeTask = async function(id) {
-        if(confirm("Взять этот заказ?")) {
-            await supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', id);
+    async function takeTask(taskId) {
+        if(confirm("Берете этот заказ?")) {
+            await supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', taskId);
+            location.reload();
         }
-    };
+    }
 
-    window.finishTask = async function(id) {
-        if(confirm("Принять работу?")) {
-            await supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+    async function finishTask(taskId) {
+        if(confirm("Подтвердить выполнение?")) {
+            await supabase.from('tasks').update({ status: 'completed' }).eq('id', taskId);
+            location.reload();
         }
-    };
+    }
 
-    window.openChat = async function(taskId, title) {
+    async function openChat(taskId, title) {
         activeChatId = taskId;
         document.getElementById('chat-title').innerText = title;
         document.getElementById('chat-ov').classList.add('open');
-        const box = document.getElementById('chat-msgs');
-        box.innerHTML = 'Загрузка...';
+        loadMessages(taskId);
+    }
+
+    function closeChat() { closeOverlay('chat-ov'); activeChatId = null; }
+
+    async function loadMessages(taskId) {
         const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at');
+        const box = document.getElementById('chat-msgs');
         box.innerHTML = '';
-        data?.forEach(renderMessage);
+        data?.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = msg.sender_id === user.id ? 'msg me' : 'msg other';
+            div.innerText = msg.text;
+            box.appendChild(div);
+        });
         box.scrollTop = box.scrollHeight;
-    };
+    }
 
-    window.closeChat = () => { document.getElementById('chat-ov').classList.remove('open'); activeChatId = null; };
-
-    window.sendMsg = async function() {
+    async function sendMsg() {
         const input = document.getElementById('msg-txt');
         const text = input.value.trim();
         if(!text) return;
-        input.value = '';
         await supabase.from('messages').insert([{ task_id: activeChatId, sender_id: user.id, text }]);
-    };
+        input.value = '';
+        loadMessages(activeChatId);
+    }
 
-    window.openProfile = function() {
+    function openProfile() {
         document.getElementById('profile-ov').classList.add('open');
         if(user?.profile) {
             document.getElementById('p-name').innerText = user.profile.name;
             document.getElementById('p-role').innerText = user.profile.role === 'client' ? 'Заказчик' : 'Исполнитель';
         }
-    };
-
-    // --- ВНУТРЕННЯЯ ЛОГИКА ---
-
-    async function initApp() {
-        const { data } = await supabase.auth.getSession();
-        if(data.session) {
-            user = data.session.user;
-            const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-            user.profile = prof;
-            startMainInterface();
-        }
     }
 
-    function startMainInterface() {
-        document.getElementById('auth-screen').style.display = 'none';
-        initMap();
-        loadTasks();
-        if(user.profile?.role === 'client') document.getElementById('add-btn').style.display = 'block';
+    // --- Системная инициализация ---
 
-        supabase.channel('main').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadTasks)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                if (payload.new.task_id === activeChatId) {
-                    renderMessage(payload.new);
-                    const b = document.getElementById('chat-msgs'); b.scrollTop = b.scrollHeight;
-                }
-            }).subscribe();
+    async function init() {
+        const { data: { session } } = await supabase.auth.getSession();
+        if(session) {
+            user = session.user;
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            user.profile = profile;
+            
+            document.getElementById('auth-screen').style.display = 'none';
+            if(profile.role === 'client') document.getElementById('add-btn').style.display = 'block';
+
+            initMap();
+            loadTasks();
+        }
     }
 
     function initMap() {
         map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 14));
-        
+
         map.on('click', e => {
             if(pickMode) {
                 pickCoords = e.latlng;
-                L.marker(pickCoords).addTo(map);
+                L.marker(e.latlng).addTo(map).bindPopup("Место задания").openPopup();
                 document.getElementById('add-ov').classList.add('open');
                 document.getElementById('add-form').style.opacity = 1;
                 document.getElementById('add-form').style.pointerEvents = 'auto';
-                document.getElementById('pick-btn').innerText = "✅ Точка выбрана";
+                document.getElementById('pick-btn').innerText = "✅ Место выбрано";
                 pickMode = false;
             }
         });
@@ -283,38 +265,32 @@
         const { data: tasks } = await supabase.from('tasks').select('*').order('created_at', {ascending: false});
         const feed = document.getElementById('feed');
         feed.innerHTML = '';
-        Object.values(markers).forEach(m => map.removeLayer(m));
-        markers = {};
 
         tasks?.forEach(t => {
             const isMy = (t.client_id === user.id || t.worker_id === user.id);
-            if (t.status === 'searching' || (isMy && t.status !== 'deleted')) {
-                if (t.status === 'searching') markers[t.id] = L.marker([t.lat, t.lon]).addTo(map).bindPopup(t.title);
+            if(t.status === 'searching' || isMy) {
+                if(t.status === 'searching') L.marker([t.lat, t.lon]).addTo(map).bindPopup(t.title);
                 
                 const card = document.createElement('div');
                 card.className = 'card';
-                let btnHtml = '';
-                if (user.profile.role === 'worker' && t.status === 'searching') btnHtml = `<button class="btn btn-p" onclick="takeTask(${t.id})">Взять за ${t.price}₽</button>`;
-                if (isMy && t.status === 'active') {
-                    btnHtml = `<div style="display:flex;gap:10px;"><button class="btn btn-s" onclick="openChat(${t.id},'${t.title}')">💬 Чат</button>`;
-                    if (user.profile.role === 'client') btnHtml += `<button class="btn btn-p" onclick="finishTask(${t.id})">Завершить</button>`;
-                    btnHtml += `</div>`;
+                let btns = '';
+                
+                if(user.profile.role === 'worker' && t.status === 'searching') {
+                    btns = `<button class="btn btn-p" onclick="takeTask(${t.id})">Взять за ${t.price}₽</button>`;
+                } else if(isMy && t.status === 'active') {
+                    btns = `<div style="display:flex;gap:10px;">
+                        <button class="btn btn-s" onclick="openChat(${t.id},'${t.title}')">💬 Чат</button>
+                        ${user.profile.role === 'client' ? `<button class="btn btn-p" onclick="finishTask(${t.id})">Принять</button>` : ''}
+                    </div>`;
                 }
-                card.innerHTML = `<span class="status">${t.status}</span><div class="price">${t.price}₽</div><h3>${t.title}</h3>${btnHtml}`;
+                
+                card.innerHTML = `<span class="status">${t.status}</span><div class="price">${t.price}₽</div><h3>${t.title}</h3>${btns}`;
                 feed.appendChild(card);
             }
         });
     }
 
-    function renderMessage(msg) {
-        const box = document.getElementById('chat-msgs');
-        const d = document.createElement('div');
-        d.className = msg.sender_id === user.id ? 'msg me' : 'msg other';
-        d.innerText = msg.text;
-        box.appendChild(d);
-    }
-
-    initApp();
+    init();
 </script>
 </body>
 </html>
