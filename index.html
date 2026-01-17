@@ -1369,7 +1369,9 @@
             console.error('Error initializing Supabase:', error);
         }
         
-        // ===================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====================
+                // ===================== ИСПРАВЛЕННЫЙ КОД =====================
+        // (Замените весь код после инициализации supabaseClient до конца)
+        
         const state = {
             user: null,
             role: 'customer',
@@ -1414,13 +1416,13 @@
                     hideAuthModal();
                     showMainInterface();
                     initMap();
-                    loadOrders();
+                    await loadOrders();
                     setupRealtimeSubscriptions();
                 } else {
                     // Пользователь не авторизован
                     console.log('No user found, showing auth modal');
                     showAuthModal();
-                    initMap(); // Инициализируем карту, но без данных пользователя
+                    initMap();
                 }
             } catch (error) {
                 console.error('Error checking user status:', error);
@@ -1449,7 +1451,6 @@
         window.switchAuthTab = function(tab) {
             state.authTab = tab;
             
-            // Обновляем активные вкладки
             document.querySelectorAll('.auth-tab').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1495,10 +1496,7 @@
                     password
                 });
                 
-                if (error) {
-                    console.error('Login error:', error);
-                    throw error;
-                }
+                if (error) throw error;
                 
                 console.log('Login successful:', data.user.email);
                 state.user = data.user;
@@ -1506,7 +1504,7 @@
                 hideAuthModal();
                 showMainInterface();
                 initMap();
-                loadOrders();
+                await loadOrders();
                 setupRealtimeSubscriptions();
                 showToast('Вход выполнен успешно!');
                 
@@ -1558,10 +1556,7 @@
                     }
                 });
                 
-                if (error) {
-                    console.error('Registration error:', error);
-                    throw error;
-                }
+                if (error) throw error;
 
                 console.log('Registration successful:', data.user?.email);
                 showToast('Регистрация успешна! Проверьте вашу почту для подтверждения');
@@ -1616,11 +1611,16 @@
                 
                 if (error) {
                     console.error('Error loading profile:', error);
+                    // Если профиля нет, создаем его
+                    if (error.code === 'PGRST116') {
+                        await createUserProfile();
+                        return;
+                    }
                     return;
                 }
                 
                 if (profile) {
-                    state.role = profile.role;
+                    state.role = profile.role || 'customer';
                     updateUserInterface(profile);
                 }
             } catch (error) {
@@ -1628,10 +1628,32 @@
             }
         }
 
+        async function createUserProfile() {
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .insert([
+                        {
+                            id: state.user.id,
+                            name: state.user.user_metadata?.name || state.user.email?.split('@')[0] || 'Пользователь',
+                            role: state.user.user_metadata?.role || 'customer',
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                if (error) throw error;
+                
+                console.log('Profile created successfully');
+                await loadUserProfile();
+                
+            } catch (error) {
+                console.error('Error creating profile:', error);
+            }
+        }
+
         function updateUserInterface(profile) {
             if (!state.user) return;
             
-            // Обновляем информацию в интерфейсе
             const userAvatar = document.getElementById('userAvatar');
             const userName = document.getElementById('userName');
             const userRole = document.getElementById('userRole');
@@ -1643,13 +1665,11 @@
             if (userName) userName.textContent = name;
             if (userRole) userRole.textContent = role;
             
-            // Обновляем заголовок в зависимости от роли
             const titleText = document.getElementById('titleText');
             if (titleText) {
                 titleText.textContent = state.role === 'customer' ? 'Мои заказы' : 'Доступные заказы';
             }
             
-            // Показываем/скрываем кнопку создания заказа
             const newOrderBtn = document.getElementById('newOrderBtn');
             if (newOrderBtn) {
                 newOrderBtn.style.display = state.role === 'customer' ? 'block' : 'none';
@@ -1695,14 +1715,18 @@
             }
             
             try {
+                const updateData = {
+                    name: name,
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Добавляем только если не пустые
+                if (phone) updateData.phone = phone;
+                if (description) updateData.description = description;
+                
                 const { error } = await supabaseClient
                     .from('profiles')
-                    .update({
-                        name: name,
-                        phone: phone,
-                        description: description,
-                        updated_at: new Date().toISOString()
-                    })
+                    .update(updateData)
                     .eq('id', state.user.id);
                 
                 if (error) throw error;
@@ -1713,7 +1737,7 @@
                 
             } catch (error) {
                 console.error('Error updating profile:', error);
-                showToast('Ошибка обновления профиля');
+                showToast('Ошибка обновления профиля: ' + error.message);
             }
             
             hideLoading();
@@ -1736,26 +1760,50 @@
                 zoomAnimation: true
             }).setView([55.7558, 37.6173], 12);
             
-            // Добавляем кастомный слой карты
             const customLayer = createCustomTileLayer();
             customLayer.addTo(state.map);
             
-            // Добавляем кастомные элементы управления
             L.control.zoom({
                 position: 'bottomright'
             }).addTo(state.map);
             
-            // Определяем местоположение
-            state.map.locate({setView: true, maxZoom: 14});
+            // Определяем местоположение - исправлено
+            state.map.locate({ 
+                setView: false,  // Не центрируем автоматически
+                maxZoom: 14,
+                watch: false,
+                enableHighAccuracy: true 
+            });
             
             state.map.on('locationfound', function(e) {
+                console.log('Location found:', e.latlng);
                 state.currentPosition = e.latlng;
                 
-                // Создаем уникальный маркер для местоположения
-                createPulsingMarker(e.latlng, 'Ваше местоположение', 'customer');
+                // Создаем маркер местоположения
+                if (state.currentMarker) {
+                    state.map.removeLayer(state.currentMarker);
+                }
                 
-                // Добавляем анимацию
+                state.currentMarker = L.marker(e.latlng, {
+                    icon: L.divIcon({
+                        className: 'custom-marker marker-customer',
+                        html: '<i class="fas fa-user"></i>',
+                        iconSize: [60, 60],
+                        iconAnchor: [30, 60]
+                    })
+                }).addTo(state.map)
+                .bindPopup('Ваше местоположение')
+                .openPopup();
+                
+                // Центрируем карту на местоположении
+                state.map.setView(e.latlng, 14);
+                
                 createRippleEffect(e.latlng);
+            });
+            
+            state.map.on('locationerror', function(e) {
+                console.error('Location error:', e.message);
+                showToast('Не удалось определить местоположение');
             });
             
             state.map.on('click', function(e) {
@@ -1764,7 +1812,6 @@
                 }
             });
             
-            // Исправляем отображение карты
             setTimeout(() => {
                 if (state.map) {
                     state.map.invalidateSize();
@@ -1773,16 +1820,13 @@
         }
 
         function createCustomTileLayer() {
-            // Используем разные провайдеры для уникального вида
             let tileUrl;
             let attribution;
             
             if (state.theme === 'dark') {
-                // Темная тема с уникальным стилем
                 tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
                 attribution = '© OpenStreetMap, © CartoDB';
             } else {
-                // Светлая тема с пастельными цветами
                 tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
                 attribution = '© OpenStreetMap, © CartoDB';
             }
@@ -1796,7 +1840,6 @@
         }
 
         function updateMapStyle() {
-            // Обновляем слой карты при смене темы
             state.map.eachLayer(layer => {
                 if (layer instanceof L.TileLayer) {
                     state.map.removeLayer(layer);
@@ -1808,7 +1851,6 @@
         }
 
         function createPulsingMarker(latlng, title, type) {
-            // Создаем пульсирующий маркер
             const icon = L.divIcon({
                 className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
                               type === 'master' ? 'marker-master' : 'marker-order'),
@@ -1822,7 +1864,6 @@
                 .addTo(state.map)
                 .bindPopup(`<b>${title}</b>`);
 
-            // Добавляем эффект при наведении
             marker.on('mouseover', function() {
                 this.setIcon(L.divIcon({
                     className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
@@ -1850,7 +1891,6 @@
         }
 
         function createRippleEffect(latlng) {
-            // Создаем эффект волн при клике
             for (let i = 0; i < 3; i++) {
                 setTimeout(() => {
                     const ripple = L.circle(latlng, {
@@ -1871,12 +1911,10 @@
         }
 
         function selectLocation(latlng) {
-            // Удаляем предыдущий маркер выбора
             if (state.selectedMarker) {
                 state.map.removeLayer(state.selectedMarker);
             }
             
-            // Добавляем новый маркер
             state.selectedMarker = L.marker(latlng, {
                 icon: L.divIcon({
                     className: 'custom-marker marker-order',
@@ -1889,7 +1927,6 @@
             
             state.selectedLocation = latlng;
             
-            // Получаем адрес по координатам
             reverseGeocode(latlng.lat, latlng.lng);
         }
 
@@ -1923,10 +1960,7 @@
                     const result = data[0];
                     const latlng = [parseFloat(result.lat), parseFloat(result.lon)];
                     
-                    // Центрируем карту
                     state.map.setView(latlng, 16);
-                    
-                    // Выбираем это местоположение
                     selectLocation(L.latLng(latlng));
                     
                     showToast("Адрес найден");
@@ -1959,17 +1993,11 @@
             try {
                 let query = supabaseClient
                     .from('orders')
-                    .select(`
-                        *,
-                        customer:profiles!orders_customer_id_fkey(name, rating),
-                        master:profiles!orders_master_id_fkey(name, rating)
-                    `);
+                    .select('*');
                 
-                if (state.role === 'customer') {
-                    // Заказчик видит только свои заказы
+                if (state.role === 'customer' && state.user) {
                     query = query.eq('customer_id', state.user.id);
-                } else {
-                    // Мастер видит все доступные заказы
+                } else if (state.role === 'master') {
                     query = query.eq('status', 'new');
                 }
                 
@@ -1978,12 +2006,13 @@
                 if (error) throw error;
                 
                 state.orders = orders || [];
+                console.log('Orders loaded:', state.orders.length);
                 updateOrdersList();
                 updateMapMarkers();
                 
             } catch (error) {
                 console.error('Error loading orders:', error);
-                showToast('Ошибка загрузки заказов');
+                showToast('Ошибка загрузки заказов: ' + error.message);
                 state.orders = getTestOrders();
                 updateOrdersList();
                 updateMapMarkers();
@@ -1997,22 +2026,22 @@
                     title: "Доставить документы",
                     description: "Срочная доставка документов в центр города",
                     price: 1500,
-                    location: { lat: 55.7558, lng: 37.6173 },
+                    lat: 55.7558,
+                    lng: 37.6173,
                     address: "Москва, Красная площадь",
                     status: "new",
-                    customer: { name: "Иван Иванов" },
-                    created_at: new Date().toISOString()
+                    customer_id: "test-user-1"
                 },
                 {
                     id: 'test-2',
                     title: "Купить продукты",
                     description: "Молоко, хлеб, яйца, сыр, фрукты. Магазин у дома.",
                     price: 800,
-                    location: { lat: 55.7358, lng: 37.6273 },
+                    lat: 55.7358,
+                    lng: 37.6273,
                     address: "Москва, Арбат",
                     status: "new",
-                    customer: { name: "Алексей Петров" },
-                    created_at: new Date().toISOString()
+                    customer_id: "test-user-2"
                 }
             ];
         }
@@ -2064,32 +2093,13 @@
             card.className = 'order-card';
             card.dataset.orderId = order.id;
             
-            // Определяем статус
-            let statusText = '';
-            let statusClass = '';
-            switch(order.status) {
-                case 'new':
-                    statusText = 'Новый';
-                    statusClass = 'status-new';
-                    break;
-                case 'active':
-                    statusText = 'В работе';
-                    statusClass = 'status-active';
-                    break;
-                case 'completed':
-                    statusText = 'Завершен';
-                    statusClass = 'status-completed';
-                    break;
-            }
-            
-            // Форматируем дату
-            const date = new Date(order.created_at);
+            const date = new Date(order.created_at || Date.now());
             const dateStr = `${date.getDate()}.${date.getMonth()+1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
             
             card.innerHTML = `
                 <div class="order-header">
-                    <div class="order-title">${order.title}</div>
-                    <div class="order-price">${order.price} ₽</div>
+                    <div class="order-title">${order.title || 'Без названия'}</div>
+                    <div class="order-price">${order.price || 0} ₽</div>
                 </div>
                 <div class="order-meta">
                     <div class="meta-item">
@@ -2101,7 +2111,7 @@
                         <span>${dateStr}</span>
                     </div>
                 </div>
-                <div class="order-description">${order.description}</div>
+                <div class="order-description">${order.description || ''}</div>
                 <div class="order-actions">
                     <button class="btn btn-primary" onclick="viewOrderDetails('${order.id}')">
                         <i class="fas fa-info-circle"></i> Подробнее
@@ -2118,18 +2128,17 @@
         }
 
         function updateMapMarkers() {
-            // Очищаем старые маркеры
             state.markers.forEach(marker => {
                 state.map.removeLayer(marker);
             });
             state.markers.clear();
             
-            // Добавляем новые маркеры
             state.orders.forEach(order => {
-                if (order.location) {
+                if (order.lat && order.lng) {
+                    const latlng = L.latLng(order.lat, order.lng);
                     const marker = createPulsingMarker(
-                        order.location,
-                        order.title,
+                        latlng,
+                        order.title || 'Заказ',
                         'order'
                     );
                     
@@ -2146,7 +2155,6 @@
         window.openNewOrderModal = function() {
             document.getElementById('newOrderModal').classList.add('active');
             
-            // Очищаем форму
             document.getElementById('orderTitle').value = '';
             document.getElementById('orderDescription').value = '';
             document.getElementById('orderPrice').value = '';
@@ -2154,7 +2162,6 @@
             document.getElementById('photoPreview').innerHTML = '';
             state.photos = [];
             
-            // Если есть выбранное место, обновляем адрес
             if (state.selectedMarker) {
                 const latlng = state.selectedMarker.getLatLng();
                 reverseGeocode(latlng.lat, latlng.lng);
@@ -2183,7 +2190,6 @@
                     
                     preview.appendChild(previewItem);
                     
-                    // Сохраняем фото в состояние
                     state.photos.push({
                         file: file,
                         url: e.target.result
@@ -2198,10 +2204,7 @@
             const previewItem = button.parentElement;
             const index = Array.from(previewItem.parentElement.children).indexOf(previewItem);
             
-            // Удаляем из состояния
             state.photos.splice(index, 1);
-            
-            // Удаляем из DOM
             previewItem.remove();
         };
 
@@ -2240,20 +2243,19 @@
                             description,
                             price,
                             address,
-                            location: state.selectedLocation,
+                            lat: state.selectedLocation.lat,
+                            lng: state.selectedLocation.lng,
                             customer_id: state.user.id,
                             status: 'new',
                             created_at: new Date().toISOString()
                         }
                     ])
-                    .select(`
-                        *,
-                        customer:profiles!orders_customer_id_fkey(name, rating)
-                    `)
+                    .select()
                     .single();
                 
                 if (error) throw error;
                 
+                console.log('Order created:', order);
                 state.orders.unshift(order);
                 updateOrdersList();
                 addOrderMarker(order);
@@ -2262,17 +2264,18 @@
                 
             } catch (error) {
                 console.error('Error creating order:', error);
-                showToast('Ошибка создания заказа');
+                showToast('Ошибка создания заказа: ' + error.message);
             }
             
             hideLoading();
         };
 
         function addOrderMarker(order) {
-            if (order.location) {
+            if (order.lat && order.lng) {
+                const latlng = L.latLng(order.lat, order.lng);
                 const marker = createPulsingMarker(
-                    order.location,
-                    order.title,
+                    latlng,
+                    order.title || 'Заказ',
                     'order'
                 );
                 
@@ -2304,12 +2307,12 @@
                 if (error) throw error;
                 
                 showToast('Заказ принят в работу!');
-                loadOrders(); // Перезагружаем список заказов
+                await loadOrders();
                 closeInfo();
                 
             } catch (error) {
                 console.error('Error taking order:', error);
-                showToast('Ошибка принятия заказа');
+                showToast('Ошибка принятия заказа: ' + error.message);
             }
             
             hideLoading();
@@ -2333,12 +2336,12 @@
                 if (error) throw error;
                 
                 showToast('Заказ завершен!');
-                loadOrders();
+                await loadOrders();
                 closeInfo();
                 
             } catch (error) {
                 console.error('Error completing order:', error);
-                showToast('Ошибка завершения заказа');
+                showToast('Ошибка завершения заказа: ' + error.message);
             }
             
             hideLoading();
@@ -2350,26 +2353,25 @@
             
             state.selectedOrder = order;
             
-            document.getElementById('infoTitle').textContent = order.title;
+            document.getElementById('infoTitle').textContent = order.title || 'Заказ';
             
-            // Заполняем контент
             const content = document.getElementById('infoContent');
             content.innerHTML = `
                 <div style="margin-bottom: 20px;">
                     <div style="font-size: 28px; font-weight: bold; color: var(--success); margin-bottom: 10px;">
-                        ${order.price} ₽
+                        ${order.price || 0} ₽
                     </div>
                     <div style="color: #64748B; margin-bottom: 5px;">
-                        <i class="fas fa-map-marker-alt"></i> ${order.address}
+                        <i class="fas fa-map-marker-alt"></i> ${order.address || 'Адрес не указан'}
                     </div>
                     <div style="color: #64748B;">
-                        <i class="fas fa-clock"></i> ${new Date(order.created_at).toLocaleString()}
+                        <i class="fas fa-clock"></i> ${new Date(order.created_at || Date.now()).toLocaleString()}
                     </div>
                 </div>
                 
                 <div style="margin-bottom: 20px;">
                     <div style="font-weight: 600; margin-bottom: 5px;">Описание:</div>
-                    <div>${order.description}</div>
+                    <div>${order.description || 'Нет описания'}</div>
                 </div>
                 
                 ${state.role === 'customer' ? `
@@ -2382,7 +2384,6 @@
                 ` : ''}
             `;
             
-            // Настраиваем кнопки действий
             const actions = document.getElementById('infoActions');
             actions.innerHTML = '';
             
@@ -2417,9 +2418,8 @@
             
             document.getElementById('mapInfo').style.display = 'block';
             
-            // Центрируем карту на этом заказе
-            if (order.location) {
-                state.map.setView([order.location.lat, order.location.lng], 16);
+            if (order.lat && order.lng) {
+                state.map.setView([order.lat, order.lng], 16);
             }
         };
 
@@ -2440,10 +2440,7 @@
             try {
                 const { data: messages, error } = await supabaseClient
                     .from('messages')
-                    .select(`
-                        *,
-                        sender:profiles(name, role)
-                    `)
+                    .select('*')
                     .eq('order_id', orderId)
                     .order('created_at', { ascending: true });
                 
@@ -2465,7 +2462,7 @@
                 messageDiv.className = `message ${message.sender_id === state.user.id ? 'outgoing' : 'incoming'}`;
                 
                 messageDiv.innerHTML = `
-                    <div class="message-sender">${message.sender?.name || 'Неизвестный'}</div>
+                    <div class="message-sender">${message.sender_id === state.user.id ? 'Вы' : 'Собеседник'}</div>
                     <div class="message-content">${message.message}</div>
                     <div class="message-time">${new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                 `;
@@ -2473,12 +2470,15 @@
                 chatMessages.appendChild(messageDiv);
             });
             
-            // Прокручиваем вниз
             chatMessages.scrollTop = chatMessages.scrollHeight;
         };
 
         window.sendChatMessage = async function() {
-            if (!state.activeChatOrderId) return;
+            if (!state.activeChatOrderId) {
+                console.error('No active chat order id');
+                showToast('Нет активного чата');
+                return;
+            }
             
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
@@ -2497,14 +2497,17 @@
                         }
                     ]);
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Error sending message:', error);
+                    throw error;
+                }
                 
                 input.value = '';
-                loadChatMessages(state.activeChatOrderId);
+                await loadChatMessages(state.activeChatOrderId);
                 
             } catch (error) {
                 console.error('Error sending message:', error);
-                showToast('Ошибка отправки сообщения');
+                showToast('Ошибка отправки сообщения: ' + error.message);
             }
         };
 
@@ -2521,23 +2524,19 @@
 
         // ===================== REALTIME ПОДПИСКИ =====================
         function setupRealtimeSubscriptions() {
-            // Отписываемся от старых подписок
             state.subscriptions.forEach(sub => sub.unsubscribe());
             state.subscriptions = [];
             
-            // Подписка на новые заказы (для мастера)
             if (state.role === 'master') {
                 const ordersSubscription = supabaseClient
                     .channel('orders-channel')
                     .on('postgres_changes', 
                         { event: 'INSERT', schema: 'public', table: 'orders' },
                         async (payload) => {
+                            console.log('New order:', payload.new);
                             const { data: order, error } = await supabaseClient
                                 .from('orders')
-                                .select(`
-                                    *,
-                                    customer:profiles!orders_customer_id_fkey(name, rating)
-                                `)
+                                .select('*')
                                 .eq('id', payload.new.id)
                                 .single();
                             
@@ -2555,7 +2554,6 @@
                 state.subscriptions.push(ordersSubscription);
             }
             
-            // Подписка на обновления заказов
             const ordersUpdateSubscription = supabaseClient
                 .channel('orders-update-channel')
                 .on('postgres_changes', 
@@ -2566,11 +2564,7 @@
                         if (orderIndex !== -1) {
                             const { data: order, error } = await supabaseClient
                                 .from('orders')
-                                .select(`
-                                    *,
-                                    customer:profiles!orders_customer_id_fkey(name, rating),
-                                    master:profiles!orders_master_id_fkey(name, rating)
-                                `)
+                                .select('*')
                                 .eq('id', payload.new.id)
                                 .single();
                             
@@ -2590,14 +2584,13 @@
             
             state.subscriptions.push(ordersUpdateSubscription);
             
-            // Подписка на сообщения
             const messagesSubscription = supabaseClient
                 .channel('messages-channel')
                 .on('postgres_changes', 
                     { event: 'INSERT', schema: 'public', table: 'messages' },
                     async (payload) => {
                         if (state.activeChatOrderId === payload.new.order_id) {
-                            loadChatMessages(state.activeChatOrderId);
+                            await loadChatMessages(state.activeChatOrderId);
                             playNotificationSound();
                         }
                     }
@@ -2622,19 +2615,16 @@
         window.switchRole = function(role) {
             state.role = role;
             
-            // Обновляем кнопки
             document.querySelectorAll('.role-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            // Обновляем интерфейс
             document.getElementById('userRole').textContent = 
                 role === 'customer' ? 'Заказчик' : 'Мастер';
             document.getElementById('titleText').textContent = 
                 role === 'customer' ? 'Мои заказы' : 'Доступные заказы';
             
-            // Обновляем заказы
             loadOrders();
         };
 
@@ -2642,31 +2632,44 @@
             state.theme = state.theme === 'light' ? 'dark' : 'light';
             localStorage.setItem('microhelp_theme', state.theme);
             loadTheme();
-            updateMapStyle();
+            if (state.map) {
+                updateMapStyle();
+            }
         };
 
         function loadTheme() {
             document.documentElement.setAttribute('data-theme', state.theme);
             const icon = state.theme === 'light' ? 'fa-moon' : 'fa-sun';
-            document.getElementById('themeIcon').className = `fas ${icon}`;
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.className = `fas ${icon}`;
+            }
         };
 
         function playNotificationSound() {
             try {
                 const audio = document.getElementById('notificationSound');
-                audio.currentTime = 0;
-                audio.play().catch(e => console.log("Audio play failed:", e));
+                if (audio) {
+                    audio.currentTime = 0;
+                    audio.play().catch(e => console.log("Audio play failed:", e));
+                }
             } catch (e) {
                 console.log("Audio error:", e);
             }
         };
 
         function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
         };
 
         function hideLoading() {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
         };
 
         function showToast(message) {
@@ -2683,13 +2686,12 @@
         };
 
         function setupEventListeners() {
-            // Анимация при загрузке
             setTimeout(() => {
                 document.querySelectorAll('.order-card').forEach((card, i) => {
                     setTimeout(() => {
                         card.style.opacity = '0';
                         card.style.transform = 'translateY(20px)';
-                        card.offsetHeight; // Trigger reflow
+                        card.offsetHeight;
                         card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                         card.style.opacity = '1';
                         card.style.transform = 'translateY(0)';
@@ -2699,7 +2701,6 @@
         };
 
         function setupSwipeGestures() {
-            // Реализация свайпов для карточек заказов
             document.querySelectorAll('.order-card').forEach(card => {
                 let startX = 0;
                 let currentX = 0;
@@ -2717,10 +2718,8 @@
                     if (Math.abs(currentX) > 100) {
                         const orderId = card.dataset.orderId;
                         if (currentX > 0 && state.role === 'master') {
-                            // Свайп вправо - взять заказ
                             takeOrder(orderId);
                         } else if (currentX < 0) {
-                            // Свайп влево - просмотреть детали
                             viewOrderDetails(orderId);
                         }
                     }
@@ -2728,6 +2727,3 @@
                 });
             });
         };
-    </script>
-</body>
-</html>
