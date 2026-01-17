@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--text); }
+        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --grey: #E5E5EA; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--text); height: 100vh; }
         
         /* UI Элементы */
         .top-nav { position: fixed; top: 20px; left: 0; right: 0; z-index: 5000; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; }
@@ -29,26 +29,25 @@
         
         .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px; transition: 0.2s; }
         .btn-p { background: var(--p); color: white; }
-        .btn-o { background: #E5E5EA; color: var(--text); }
+        .btn-o { background: var(--grey); color: var(--text); }
         .btn-g { background: var(--green); color: white; }
 
         input, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid #DDD; margin-bottom: 12px; box-sizing: border-box; font-family: inherit; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--p); }
-
+        
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
         .overlay.active { transform: translateY(0); }
         .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
 
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F2F2F7; }
+        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; font-size: 14px; }
         .msg.me { background: var(--p); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
         .msg.other { background: white; align-self: flex-start; border-bottom-left-radius: 4px; }
 
-        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        
-        .stat-box { display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 15px; margin: 15px 0; }
-        .stat-val { display: block; font-weight: 800; font-size: 18px; color: var(--p); }
-        .stat-lab { font-size: 10px; opacity: 0.5; text-transform: uppercase; }
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; text-align: center; min-width: 200px; }
+
+        /* Auth Tabs */
+        .auth-tab { cursor: pointer; padding: 10px 20px; font-weight: 800; color: #888; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .auth-tab.active { color: var(--p); border-bottom-color: var(--p); }
     </style>
 </head>
 <body>
@@ -60,21 +59,28 @@
     <button class="circle-btn" onclick="openOverlay('ov-profile')">👤</button>
 </div>
 
-<div id="scr-auth" style="position:fixed; inset:0; background:white; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; overflow-y: auto;">
+<div id="scr-auth" style="position:fixed; inset:0; background:white; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center;">
     <div style="font-size: 60px; margin-bottom: 10px;">🤝</div>
     <h1 style="font-size: 28px; font-weight: 900; margin: 0; color: var(--p);">MicroHelp PRO</h1>
-    <p id="auth-sub" style="color: #8E8E93; margin: 5px 0 25px 0;">Войдите или создайте аккаунт</p>
     
+    <div style="display: flex; margin: 25px 0 15px 0; gap: 10px;">
+        <div id="tab-login" class="auth-tab active" onclick="setAuthMode('login')">Вход</div>
+        <div id="tab-signup" class="auth-tab" onclick="setAuthMode('signup')">Регистрация</div>
+    </div>
+
     <div style="width: 100%; max-width: 320px;">
-        <input type="email" id="auth-email" placeholder="Ваш Email">
-        <input type="password" id="auth-pass" placeholder="Пароль">
+        <input type="email" id="auth-email" placeholder="Email">
+        <input type="password" id="auth-pass" placeholder="Пароль (мин. 6 символов)">
         
-        <div id="auth-actions">
-            <button class="btn btn-p" onclick="handleAuth('login')">Войти</button>
-            <div style="margin: 15px 0; opacity: 0.3; font-size: 12px; font-weight: 800;">ИЛИ</div>
+        <div id="box-login">
+            <button class="btn btn-p" onclick="handleAuth('login')">Войти в аккаунт</button>
+        </div>
+
+        <div id="box-signup" style="display:none;">
+            <p style="font-size: 11px; font-weight: 800; color: #888; margin-bottom: 10px; text-transform: uppercase;">Создать аккаунт как:</p>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-o" onclick="handleAuth('signup', 'client')" style="font-size:12px;">Я Заказчик</button>
-                <button class="btn btn-o" onclick="handleAuth('signup', 'worker')" style="font-size:12px;">Я Исполнитель</button>
+                <button class="btn btn-o" onclick="handleAuth('signup', 'client')" style="flex:1; margin:0; font-size:13px;">Заказчик</button>
+                <button class="btn btn-o" onclick="handleAuth('signup', 'worker')" style="flex:1; margin:0; font-size:13px;">Исполнитель</button>
             </div>
         </div>
     </div>
@@ -83,36 +89,32 @@
 <div id="main-layout" style="display:none">
     <div id="map-container"><div id="map"></div></div>
     <div id="content-container">
-        <h2 style="margin: 0 0 20px 0; font-weight: 800; letter-spacing: -0.5px;">Задания поблизости</h2>
+        <h2 style="margin: 0 0 20px 0; font-weight: 800;">Задания поблизости</h2>
         <div id="list-feed"></div>
     </div>
 </div>
 
 <div id="ov-profile" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Профиль</div>
+    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Мой профиль</div>
     <div style="padding:20px;">
         <div class="card" style="text-align:center;">
             <div style="font-size:50px;">👤</div>
-            <h2 id="p-name">Загрузка...</h2>
-            <div class="stat-box">
-                <div class="stat-item"><span class="stat-val" id="p-rating-val">5.0</span><span class="stat-lab">Рейтинг</span></div>
-                <div class="stat-item"><span class="stat-val" id="p-done-val">0</span><span class="stat-lab">Заказов</span></div>
-            </div>
-            <button class="btn btn-o" onclick="signOut()" style="color:var(--red); border:1px solid var(--red)">Выйти из системы</button>
+            <h2 id="p-name" style="margin:10px 0;">Имя</h2>
+            <p id="p-role-label" style="opacity:0.5; margin-top:-10px; font-size:14px;"></p>
+            <button class="btn btn-o" onclick="signOut()" style="color:var(--red); margin-top:20px;">Выйти из аккаунта</button>
         </div>
-        <div id="p-my-orders"></div>
     </div>
 </div>
 
 <div id="ov-create" class="overlay">
     <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Новый заказ</div>
     <div style="padding:20px;">
-        <button class="btn btn-o" onclick="startPicking()" id="pick-btn" style="border: 2px dashed var(--p);">📍 Указать точку на карте</button>
+        <button class="btn btn-o" onclick="startPicking()" id="pick-btn" style="border: 2px dashed var(--p); background:white;">📍 Указать точку на карте</button>
         <div id="form-fields" style="margin-top:20px; opacity:0.3; pointer-events:none;">
             <input id="c-title" placeholder="Что нужно сделать?">
-            <textarea id="c-desc" placeholder="Описание..." rows="3"></textarea>
+            <textarea id="c-desc" placeholder="Детали..." rows="3"></textarea>
             <input id="c-price" type="number" placeholder="Бюджет (₽)">
-            <button class="btn btn-p" onclick="createTask()">Разместить задание</button>
+            <button class="btn btn-p" onclick="createTask()">Разместить</button>
         </div>
     </div>
 </div>
@@ -121,12 +123,13 @@
     <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> <span id="chat-title">Чат</span></div>
     <div id="chat-box"></div>
     <div style="padding:20px; background:white; display:flex; gap:10px; border-top:1px solid #EEE;">
-        <input id="chat-inp" placeholder="Сообщение..." style="margin:0; flex:1;">
+        <input id="chat-inp" placeholder="Сообщение..." style="margin:0; flex:1; border:none;">
         <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding:0 20px;">➤</button>
     </div>
 </div>
 
 <script>
+    // 1. Инициализация Supabase
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
     const _supabase = supabase.createClient(SB_URL, SB_KEY);
@@ -134,56 +137,57 @@
     let u = { id: null, role: '', name: '' };
     let state = { map: null, markers: {}, isPicking: false, pickMarker: null, pickCoords: null, activeChat: null };
 
-    // --- АВТОРИЗАЦИЯ ---
+    // --- ЛОГИКА АВТОРИЗАЦИИ ---
+    function setAuthMode(mode) {
+        document.getElementById('box-login').style.display = mode === 'login' ? 'block' : 'none';
+        document.getElementById('box-signup').style.display = mode === 'signup' ? 'block' : 'none';
+        document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+        document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+    }
+
     async function handleAuth(mode, role = 'client') {
         const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-pass').value;
+        const pass = document.getElementById('auth-pass').value;
 
-        if(!email || !password) return showToast("⚠️ Введите email и пароль");
+        if(!email || pass.length < 6) return showToast("⚠️ Email и пароль от 6 знаков");
 
         if(mode === 'signup') {
-            const { data, error } = await _supabase.auth.signUp({ email, password });
+            const { data, error } = await _supabase.auth.signUp({ email, password: pass });
             if(error) return showToast("❌ " + error.message);
-            if(data.user) {
-                await _supabase.from('profiles').insert([{ 
-                    id: data.user.id, 
-                    name: email.split('@')[0], 
-                    role: role, 
-                    rating: 5.0 
-                }]);
-                showToast("✅ Аккаунт создан! Входим...");
-                checkUser();
-            }
+            
+            // Создаем профиль в БД
+            await _supabase.from('profiles').insert([{ 
+                id: data.user.id, name: email.split('@')[0], role: role 
+            }]);
+            showToast("🎉 Регистрация успешна!");
         } else {
-            const { error } = await _supabase.auth.signInWithPassword({ email, password });
-            if(error) return showToast("❌ " + error.message);
-            checkUser();
+            const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+            if(error) return showToast("❌ Ошибка входа");
         }
+        checkUser();
     }
 
     async function checkUser() {
         const { data: { session } } = await _supabase.auth.getSession();
         if (session) {
-            u.id = session.user.id;
-            const { data: prof } = await _supabase.from('profiles').select('*').eq('id', u.id).single();
+            const { data: prof } = await _supabase.from('profiles').select('*').eq('id', session.user.id).single();
             if(prof) {
-                u.role = prof.role;
-                u.name = prof.name;
+                u = prof;
                 startApp();
             }
         }
     }
 
-    async function signOut() {
-        await _supabase.auth.signOut();
-        location.reload();
-    }
+    async function signOut() { await _supabase.auth.signOut(); location.reload(); }
 
-    // --- ЛОГИКА ПРИЛОЖЕНИЯ ---
+    // --- ЗАПУСК ПРИЛОЖЕНИЯ ---
     function startApp() {
         document.getElementById('scr-auth').style.display = 'none';
         document.getElementById('main-layout').style.display = 'flex';
         document.getElementById('ui-controls').style.display = 'flex';
+        
+        document.getElementById('p-name').innerText = u.name;
+        document.getElementById('p-role-label').innerText = u.role === 'client' ? 'Заказчик' : 'Исполнитель';
         if(u.role === 'worker') document.getElementById('btn-add').style.display = 'none';
 
         initMap();
@@ -192,22 +196,15 @@
 
     function initMap() {
         if(state.map) return;
-        state.map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 14);
+        state.map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
         
-        navigator.geolocation.getCurrentPosition(p => {
-            const lat = p.coords.latitude, lon = p.coords.longitude;
-            state.map.setView([lat, lon], 14);
-            L.circleMarker([lat, lon], { radius: 8, color: '#007AFF', fillOpacity: 1 }).addTo(state.map);
-        });
-
         state.map.on('click', e => {
             if(!state.isPicking) return;
             if(state.pickMarker) state.map.removeLayer(state.pickMarker);
             state.pickCoords = e.latlng;
             state.pickMarker = L.marker(e.latlng).addTo(state.map);
             openOverlay('ov-create');
-            document.getElementById('pick-btn').innerText = '📍 Точка установлена';
             document.getElementById('form-fields').style.opacity = '1';
             document.getElementById('form-fields').style.pointerEvents = 'auto';
             state.isPicking = false;
@@ -216,132 +213,83 @@
 
     function sync() {
         loadData();
-        _supabase.channel('db-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
+        _supabase.channel('db').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
     }
 
     async function loadData() {
         const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        
-        // Лента
         const feed = document.getElementById('list-feed');
         feed.innerHTML = '';
         
-        // Маркеры
         Object.values(state.markers).forEach(m => state.map.removeLayer(m));
 
         tasks?.forEach(t => {
             const isMine = t.client_id === u.id || t.worker_id === u.id;
-            
-            // Отрисовка на карте
             if(t.status === 'searching') {
                 state.markers[t.id] = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(t.title);
             }
-
-            // Отрисовка в ленте
             if(t.status === 'searching' || (isMine && t.status === 'active')) {
                 feed.appendChild(createCard(t));
             }
         });
-        
-        // Обновить профиль
-        document.getElementById('p-name').innerText = u.name;
-        const { count } = await _supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'completed').or(`client_id.eq.${u.id},worker_id.eq.${u.id}`);
-        document.getElementById('p-done-val').innerText = count || 0;
     }
 
     function createCard(t) {
-        const card = document.createElement('div');
-        card.className = 'card';
+        const div = document.createElement('div');
+        div.className = 'card';
         const isMine = t.client_id === u.id || t.worker_id === u.id;
-        let color = t.status==='searching'?'#007AFF':(t.status==='active'?'#FF9500':'#34C759');
-        
-        card.innerHTML = `
-            <span class="badge" style="background:${color}15; color:${color}">${t.status}</span>
-            <div style="display:flex; justify-content:space-between;">
-                <b>${t.title}</b>
-                <b style="color:var(--p)">${t.price} ₽</b>
-            </div>
-            <p style="font-size:13px; opacity:0.6; margin:8px 0;">${t.description || ''}</p>
+        div.innerHTML = `
+            <span class="badge" style="background:rgba(0,122,255,0.1); color:var(--p)">${t.status}</span>
+            <div style="display:flex; justify-content:space-between"><b>${t.title}</b> <b>${t.price} ₽</b></div>
         `;
-
+        
         if(t.status === 'searching' && u.role === 'worker') {
-            const btn = document.createElement('button'); btn.className = 'btn btn-p'; btn.innerText = 'Принять заказ';
-            btn.onclick = () => takeTask(t.id); card.appendChild(btn);
+            const b = document.createElement('button'); b.className = 'btn btn-p'; b.innerText = 'Принять';
+            b.onclick = async () => await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', t.id);
+            div.appendChild(b);
         }
-
         if(t.status === 'active' && isMine) {
-            const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '10px';
-            const chat = document.createElement('button'); chat.className = 'btn btn-o'; chat.innerText = '💬 Чат';
-            chat.onclick = () => openChat(t.id, t.title); row.appendChild(chat);
-            
-            if(u.role === 'client') {
-                const pay = document.createElement('button'); pay.className = 'btn btn-g'; pay.innerText = '✅ Оплатить';
-                pay.onclick = () => finishTask(t.id); row.appendChild(pay);
-            }
-            card.appendChild(row);
+            const b = document.createElement('button'); b.className = 'btn btn-o'; b.innerText = '💬 Чат';
+            b.onclick = () => { state.activeChat = t.id; openOverlay('ov-chat'); loadMsgs(); };
+            div.appendChild(b);
         }
-        return card;
+        return div;
     }
 
-    // --- ДЕЙСТВИЯ ---
-    function startPicking() { state.isPicking = true; closeOverlay(); showToast("Кликните на карту"); }
-
+    // --- ФУНКЦИИ ---
+    function startPicking() { state.isPicking = true; closeOverlay(); showToast("Нажмите на карту"); }
     async function createTask() {
         const title = document.getElementById('c-title').value;
-        const desc = document.getElementById('c-desc').value;
         const price = document.getElementById('c-price').value;
-        if(!title || !state.pickCoords) return showToast("⚠️ Заполните все данные");
-        
+        if(!title || !state.pickCoords) return;
         await _supabase.from('tasks').insert([{ 
-            title, description: desc, price: parseInt(price), 
-            client_id: u.id, lat: state.pickCoords.lat, lon: state.pickCoords.lng, status: 'searching' 
+            title, price: parseInt(price), client_id: u.id, 
+            lat: state.pickCoords.lat, lon: state.pickCoords.lng, status: 'searching' 
         }]);
         closeOverlay(); showToast("✅ Опубликовано!");
     }
 
-    async function takeTask(id) {
-        await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id);
-        showToast("🏃 Заказ взят в работу!");
-    }
-
-    async function finishTask(id) {
-        if(confirm("Завершить заказ?")) {
-            await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
-            showToast("🎉 Заказ выполнен!");
-        }
-    }
-
-    async function openChat(id, title) { 
-        state.activeChat = id; 
-        document.getElementById('chat-title').innerText = title; 
-        openOverlay('ov-chat'); 
-        loadMsgs(); 
-    }
-
     async function loadMsgs() {
-        if(!state.activeChat) return;
         const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChat).order('created_at');
         const box = document.getElementById('chat-box'); box.innerHTML = '';
         data?.forEach(m => {
-            const div = document.createElement('div'); div.className = `msg ${m.sender_id === u.id ? 'me' : 'other'}`;
-            div.innerText = m.text; box.appendChild(div);
+            const d = document.createElement('div'); d.className = `msg ${m.sender_id === u.id ? 'me' : 'other'}`;
+            d.innerText = m.text; box.appendChild(d);
         });
         box.scrollTop = box.scrollHeight;
     }
 
     async function sendMsg() {
-        const inp = document.getElementById('chat-inp'); 
+        const inp = document.getElementById('chat-inp');
         if(!inp.value) return;
         await _supabase.from('messages').insert([{ task_id: state.activeChat, sender_id: u.id, text: inp.value }]);
-        inp.value = '';
-        loadMsgs();
+        inp.value = ''; loadMsgs();
     }
 
     function openOverlay(id) { document.getElementById(id).classList.add('active'); }
-    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); state.activeChat = null; }
+    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); }
     function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(() => t.style.display='none', 3000); }
 
-    // Проверка сессии при загрузке
     checkUser();
 </script>
 </body>
