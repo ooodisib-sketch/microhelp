@@ -1,279 +1,1239 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MicroHelp PRO | Финальная версия</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroHelp - Заказ микро-помощи</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --grey: #E5E5EA; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); height: 100vh; overflow: hidden; }
-        
-        /* Главный экран */
-        #main-layout { display: none; flex-direction: column; height: 100vh; width: 100%; }
-        #map-container { height: 35vh; width: 100%; position: relative; flex-shrink: 0; }
-        #map { height: 100%; width: 100%; z-index: 1; }
-
-        #content-container { 
-            height: 65vh; background: var(--bg); border-top-left-radius: 30px; border-top-right-radius: 30px; 
-            margin-top: -30px; z-index: 100; position: relative; overflow-y: auto; 
-            padding: 25px 20px 100px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .role-selector { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: white; padding: 5px; border-radius: 40px; z-index: 5000; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; }
-        .role-opt { padding: 8px 18px; border-radius: 30px; font-size: 13px; font-weight: 800; cursor: pointer; color: #888; transition: 0.3s; }
-        .role-opt.active { background: var(--p); color: white; }
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-light: #FFFFFF;
+            --bg-dark: #121212;
+            --card-light: #F9FAFB;
+            --card-dark: #1E1E1E;
+            --text-light: #111827;
+            --text-dark: #F9FAFB;
+            --border-light: #E5E7EB;
+            --border-dark: #374151;
+        }
 
-        .top-nav { position: fixed; top: 15px; left: 0; right: 0; z-index: 4999; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; }
-        .circle-btn { width: 50px; height: 50px; background: white; border-radius: 25px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.1); pointer-events: auto; cursor: pointer; border: none; font-size: 20px; }
+        [data-theme="light"] {
+            --bg-color: var(--bg-light);
+            --text-color: var(--text-light);
+            --card-bg: var(--card-light);
+            --border-color: var(--border-light);
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
-        .card { background: white; border-radius: 22px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-        .btn-p { background: var(--p); color: white; }
-        .btn-o { background: var(--grey); color: var(--text); }
-        .btn-g { background: var(--green); color: white; }
+        [data-theme="dark"] {
+            --bg-color: var(--bg-dark);
+            --text-color: var(--text-dark);
+            --card-bg: var(--card-dark);
+            --border-color: var(--border-dark);
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
 
-        #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 12px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; }
-        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
-        .overlay.active { transform: translateY(0); }
-        .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
-        
-        input, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid #DDD; margin-bottom: 12px; font-family: inherit; box-sizing: border-box; }
-        
-        #scr-auth { position: fixed; inset: 0; background: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
 
-        /* Стиль для чата */
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F9F9F9; }
-        .msg { padding: 10px 15px; border-radius: 15px; max-width: 80%; font-size: 14px; }
-        .msg.me { align-self: flex-end; background: var(--p); color: white; }
-        .msg.other { align-self: flex-start; background: #E5E5EA; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auth-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 4px;
+            margin-top: 15px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab-button.active {
+            background: white;
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .map-container {
+            height: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .center-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+
+        .center-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .search-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 16px;
+        }
+
+        .search-box button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 20px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .orders-list {
+            margin-top: 20px;
+        }
+
+        .order-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .order-card.swiping {
+            transition: transform 0.2s;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .order-title {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-color);
+        }
+
+        .order-price {
+            font-weight: bold;
+            color: var(--success);
+            font-size: 20px;
+        }
+
+        .order-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+        }
+
+        [data-theme="dark"] .info-item {
+            color: #AAA;
+        }
+
+        .order-description {
+            margin: 12px 0;
+            line-height: 1.5;
+            color: var(--text-color);
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            padding: 24px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--border-color) 25%, #e0e0e0 50%, var(--border-color) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-order {
+            height: 120px;
+            margin: 12px 0;
+        }
+
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            background: var(--card-bg);
+        }
+
+        .message {
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message-outgoing {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message-incoming {
+            background: var(--border-color);
+            color: var(--text-color);
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-btn {
+            padding: 10px 16px;
+            background: var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .photo-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-weight: bold;
+        }
+
+        .swipe-right {
+            right: -100px;
+            background: var(--success);
+            color: white;
+        }
+
+        .swipe-left {
+            left: -100px;
+            background: #666;
+            color: white;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-new {
+            background: var(--primary);
+            color: white;
+        }
+
+        .status-in-progress {
+            background: var(--warning);
+            color: white;
+        }
+
+        .status-completed {
+            background: var(--success);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 12px;
+            }
+            
+            .map-container {
+                height: 300px;
+            }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            .order-info {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-
-<div id="toast"></div>
-
-<div class="role-selector" id="role-ui" style="display:none">
-    <div class="role-opt active" id="opt-client" onclick="updateRole('client')">Заказчик</div>
-    <div class="role-opt" id="opt-worker" onclick="updateRole('worker')">Мастер</div>
-</div>
-
-<div id="scr-auth">
-    <h1 style="font-weight: 900; color: var(--p);">MicroHelp PRO</h1>
-    <div style="width: 100%; max-width: 320px;">
-        <input type="email" id="auth-email" placeholder="Email">
-        <input type="password" id="auth-pass" placeholder="Пароль">
-        <div id="reg-fields" style="display:none">
-            <input type="text" id="auth-name" placeholder="Имя">
-            <input type="text" id="auth-phone" placeholder="Телефон">
-        </div>
-        <button class="btn btn-p" onclick="handleAuth()">Продолжить</button>
-        <p onclick="toggleReg()" id="toggle-auth" style="margin-top:20px; font-size:14px; color:var(--p); cursor:pointer">Регистрация</p>
-    </div>
-</div>
-
-<div id="main-layout">
-    <div class="top-nav">
-        <button class="circle-btn" onclick="openOverlay('ov-create')" id="btn-add-ui">➕</button>
-        <button class="circle-btn" onclick="openOverlay('ov-profile')">👤</button>
-    </div>
-    
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
-
-    <div id="content-container">
-        <h2 id="feed-title" style="font-weight: 800; margin-bottom: 20px;">Загрузка...</h2>
-        <div id="list-feed"></div>
-    </div>
-</div>
-
-<div id="ov-chat" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()">✕</button> <span id="chat-title">Чат</span></div>
-    <div id="chat-box"></div>
-    <div style="padding:15px; background:white; display:flex; gap:10px;">
-        <input id="chat-inp" placeholder="Сообщение..." style="margin:0">
-        <button class="btn btn-p" style="width:auto; margin:0" onclick="sendMsg()">➤</button>
-    </div>
-</div>
-
-<div id="ov-profile" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()">✕</button> Кабинет</div>
-    <div style="padding:20px; overflow-y:auto">
-        <div id="p-stats" class="card" style="text-align:center">
-            <h3 id="p-user-name">...</h3>
-            <p id="p-user-balance">Заработано: 0 ₽</p>
-        </div>
-        <h4>История заказов</h4>
-        <div id="p-history"></div>
-        <button class="btn btn-o" onclick="signOut()" style="color:var(--red)">Выйти</button>
-    </div>
-</div>
-
-<div id="ov-create" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()">✕</button> Новый заказ</div>
-    <div style="padding:20px">
-        <button class="btn btn-o" onclick="preparePick()" id="pick-btn" style="border: 2px dashed var(--p)">📍 Указать на карте</button>
-        <div id="create-form" style="display:none; margin-top:20px">
-            <input id="c-title" placeholder="Что нужно сделать?">
-            <textarea id="c-desc" placeholder="Описание..."></textarea>
-            <input id="c-price" type="number" placeholder="Бюджет (₽)">
-            <button class="btn btn-p" onclick="saveTask()">Опубликовать</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // 1. ИСПРАВЛЕНИЕ КОНФЛИКТА ИМЕН
-    const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
-    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NDEzNjAsImV4cCI6MjA4NDExNzM2MH0.lagPVLLopst3yx5eiuJchwOP4wJg49cEqmWZrNWxFrQ'; // Замените на актуальный!
-    const _supabase = supabase.createClient(SB_URL, SB_KEY);
-
-    let u = null, isReg = false;
-    let state = { map: null, markers: {}, isPicking: false, pickCoords: null, activeTask: null };
-
-    async function initApp() {
-        const { data: { session } } = await _supabase.auth.getSession();
-        if(!session) return;
-        
-        const { data: prof } = await _supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        u = prof || { id: session.user.id, role: 'client', name: 'Пользователь' };
-        
-        document.getElementById('scr-auth').style.display = 'none';
-        document.getElementById('main-layout').style.display = 'flex';
-        document.getElementById('role-ui').style.display = 'flex';
-        
-        updateRole(u.role || 'client');
-        initMap();
-        syncData();
-    }
-
-    function initMap() {
-        if(state.map) return;
-        state.map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        state.map.locate({setView: true, maxZoom: 14});
-        
-        state.map.on('click', e => {
-            if(!state.isPicking) return;
-            state.pickCoords = e.latlng;
-            openOverlay('ov-create');
-            document.getElementById('create-form').style.display = 'block';
-            state.isPicking = false;
-        });
-    }
-
-    async function syncData() {
-        loadData();
-        _supabase.channel('tasks').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
-    }
-
-    async function loadData() {
-        const { data: tasks } = await _supabase.from('tasks').select('*, profiles!tasks_client_id_fkey(name, phone)').order('created_at', {ascending: false});
-        const feed = document.getElementById('list-feed');
-        const hist = document.getElementById('p-history');
-        feed.innerHTML = ''; hist.innerHTML = '';
-        
-        Object.values(state.markers).forEach(m => state.map.removeLayer(m));
-
-        tasks?.forEach(t => {
-            const isOwner = t.client_id === u.id;
-            const isWorker = t.worker_id === u.id;
-            const card = createCard(t);
-
-            if(u.role === 'client') {
-                if(isOwner && t.status !== 'completed') feed.appendChild(card);
-            } else {
-                if(t.status === 'searching') {
-                    feed.appendChild(card);
-                    const m = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(`<b>${t.title}</b><br>${t.price}₽`);
-                    state.markers[t.id] = m;
-                }
-            }
-            if(isOwner || isWorker) hist.appendChild(createCard(t, true));
-        });
-        document.getElementById('feed-title').innerText = u.role === 'client' ? "Мои активные заказы" : "Доступные заказы";
-    }
-
-    function createCard(t, isHist = false) {
-        const div = document.createElement('div'); div.className = 'card';
-        div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start">
-                <div>
-                    <span style="font-size:10px; color:var(--p); font-weight:800 uppercase">${t.status}</span>
-                    <h3 style="margin:5px 0 0 0">${t.title}</h3>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <span>🤝</span>
+                    MicroHelp
                 </div>
-                <b style="color:var(--green)">${t.price} ₽</b>
+                <div class="auth-section">
+                    <button class="theme-toggle" onclick="toggleTheme()">
+                        🌙
+                    </button>
+                    <div id="authButtons">
+                        <button class="btn btn-primary" onclick="openAuthModal()">Войти</button>
+                    </div>
+                    <div id="userInfo" style="display: none;" class="user-info">
+                        <span id="userEmail"></span>
+                        <button class="btn btn-outline" onclick="logout()">Выйти</button>
+                    </div>
+                </div>
             </div>
-            <p style="font-size:13px; opacity:0.7">${t.description || ''}</p>
-        `;
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab('customer')">Заказчик</button>
+                <button class="tab-button" onclick="switchTab('master')">Мастер</button>
+                <button class="tab-button" onclick="switchTab('orders')">Мои заказы</button>
+            </div>
+        </div>
+    </header>
 
-        if(t.status === 'searching' && u.role === 'worker') {
-            const b = document.createElement('button'); b.className = 'btn btn-p'; b.innerText = 'Взять заказ';
-            b.onclick = () => takeTask(t.id); div.appendChild(b);
+    <main class="container">
+        <!-- Вкладка Заказчика -->
+        <div id="customerTab" class="tab-content active">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="search-box">
+                    <input type="text" id="addressSearch" placeholder="Введите адрес для поиска...">
+                    <button onclick="searchAddress()">Найти</button>
+                </div>
+                <button class="center-btn" onclick="centerMap()" title="Центрировать карту">📍</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="orderTitle">Название задачи</label>
+                <input type="text" id="orderTitle" class="form-control" placeholder="Например: Купить продукты">
+            </div>
+            
+            <div class="form-group">
+                <label for="orderDescription">Описание</label>
+                <textarea id="orderDescription" class="form-control" rows="3" placeholder="Подробно опишите задачу..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="orderPrice">Стоимость (руб.)</label>
+                <input type="number" id="orderPrice" class="form-control" placeholder="500">
+            </div>
+            
+            <button class="btn btn-primary" onclick="createOrder()" style="width: 100%; padding: 15px;">
+                Создать заказ
+            </button>
+        </div>
+
+        <!-- Вкладка Мастера -->
+        <div id="masterTab" class="tab-content">
+            <h2>Доступные заказы</h2>
+            <div id="availableOrders" class="orders-list">
+                <!-- Скелетоны при загрузке -->
+                <div class="order-card skeleton skeleton-order"></div>
+                <div class="order-card skeleton skeleton-order"></div>
+                <div class="order-card skeleton skeleton-order"></div>
+            </div>
+            
+            <h2 style="margin-top: 30px;">Мои активные заказы</h2>
+            <div id="activeOrders" class="orders-list">
+                <!-- Здесь будут активные заказы -->
+            </div>
+        </div>
+
+        <!-- Вкладка Мои заказы -->
+        <div id="ordersTab" class="tab-content">
+            <h2>Мои заказы</h2>
+            <div id="myOrders" class="orders-list">
+                <!-- Здесь будут заказы пользователя -->
+            </div>
+        </div>
+
+        <!-- Чат для заказа -->
+        <div id="chatModal" class="modal">
+            <div class="modal-content">
+                <h3>Чат заказа <span id="chatOrderId"></span></h3>
+                <div id="chatMessages" class="chat-container">
+                    <!-- Сообщения чата -->
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="Введите сообщение..." onkeypress="chatKeyPress(event)">
+                    <div class="file-upload">
+                        <input type="file" id="chatPhoto" accept="image/*" onchange="uploadChatPhoto()">
+                        <div class="file-upload-btn">📷</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendMessage()">Отправить</button>
+                </div>
+                <div id="photoPreview"></div>
+                <button class="btn" onclick="closeChat()" style="margin-top: 16px;">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Модалка авторизации -->
+        <div id="authModal" class="modal">
+            <div class="modal-content">
+                <h2>Авторизация</h2>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="authEmail" class="form-control" placeholder="email@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="authPassword" class="form-control" placeholder="Пароль">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="login()">Войти</button>
+                    <button class="btn btn-outline" onclick="register()">Регистрация</button>
+                </div>
+                <button class="btn" onclick="closeAuthModal()" style="margin-top: 16px; width: 100%;">Отмена</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script>
+        // Инициализация приложения
+        const state = {
+            map: null,
+            user: null,
+            currentPosition: null,
+            selectedLocation: null,
+            orders: [],
+            activeChat: null,
+            audioContext: null,
+            notificationSound: null
+        };
+
+        // Конфигурация Supabase
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_KEY = 'your-anon-key';
+
+        let _supabase; // Переименовано, чтобы избежать конфликта
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initApp();
+            setupSwipeGestures();
+            initAudio();
+            loadTheme();
+        });
+
+        async function initApp() {
+            // Инициализация карты
+            initMap();
+            
+            // Инициализация Supabase
+            await initSupabase();
+            
+            // Проверка авторизации
+            await checkAuth();
+            
+            // Загрузка заказов
+            loadOrders();
+            
+            // Подписка на новые заказы
+            subscribeToOrders();
         }
 
-        if(t.status === 'active' && (t.client_id === u.id || t.worker_id === u.id)) {
-            const bChat = document.createElement('button'); bChat.className = 'btn btn-o'; bChat.innerText = '💬 Чат и контакты';
-            bChat.onclick = () => openChat(t); div.appendChild(bChat);
+        function initMap() {
+            state.map = L.map('map', {
+                zoomControl: false
+            }).setView([55.7558, 37.6173], 10); // Москва по умолчанию
             
-            if(u.role === 'client') {
-                const bFin = document.createElement('button'); bFin.className = 'btn btn-g'; bFin.innerText = '✅ Завершить и оплатить';
-                bFin.onclick = () => finishTask(t.id); div.appendChild(bFin);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(state.map);
+            
+            // Определение местоположения
+            state.map.locate({setView: true, maxZoom: 16});
+            
+            state.map.on('locationfound', function(e) {
+                state.currentPosition = e.latlng;
+                L.marker(e.latlng).addTo(state.map)
+                    .bindPopup('Ваше местоположение')
+                    .openPopup();
+            });
+            
+            state.map.on('click', function(e) {
+                if (state.selectedLocation) {
+                    state.map.removeLayer(state.selectedLocation);
+                }
+                state.selectedLocation = L.marker(e.latlng).addTo(state.map)
+                    .bindPopup('Место выполнения заказа')
+                    .openPopup();
+            });
+            
+            // Добавляем контроль зума
+            L.control.zoom({
+                position: 'topright'
+            }).addTo(state.map);
+            
+            // Исправление отображения карты
+            setTimeout(() => {
+                if (state.map) {
+                    state.map.invalidateSize();
+                }
+            }, 100);
+        }
+
+        async function initSupabase() {
+            // Динамический импорт Supabase
+            const supabaseModule = await import('https://esm.sh/@supabase/supabase-js@2');
+            _supabase = supabaseModule.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        function initAudio() {
+            try {
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log("Аудио не поддерживается");
             }
         }
-        return div;
-    }
 
-    // --- ФУНКЦИИ ЛОГИКИ ---
-    async function takeTask(id) { await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id); showToast("Заказ принят!"); }
-    async function finishTask(id) { if(confirm("Подтверждаете оплату?")) { await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id); showToast("Оплачено!"); } }
-    
-    function updateRole(r) { 
-        u.role = r; 
-        document.getElementById('opt-client').classList.toggle('active', r==='client');
-        document.getElementById('opt-worker').classList.toggle('active', r==='worker');
-        document.getElementById('btn-add-ui').style.display = r==='client' ? 'flex' : 'none';
-        loadData();
-    }
-
-    function openOverlay(id) { document.getElementById(id).classList.add('active'); }
-    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); }
-    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(()=>t.style.display='none', 3000); }
-    function toggleReg() { isReg = !isReg; document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none'; }
-    function preparePick() { state.isPicking = true; closeOverlay(); showToast("Кликните на карту"); }
-
-    async function handleAuth() {
-        const email = document.getElementById('auth-email').value;
-        const pass = document.getElementById('auth-pass').value;
-        if(isReg) {
-            const { data, error } = await _supabase.auth.signUp({ email, password: pass });
-            if(error) return alert(error.message);
-            await _supabase.from('profiles').insert([{ id: data.user.id, name: document.getElementById('auth-name').value, phone: document.getElementById('auth-phone').value, role: 'client' }]);
-            alert("Регистрация успешна!"); location.reload();
-        } else {
-            const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
-            if(error) alert(error.message); else initApp();
+        function playNotificationSound() {
+            if (!state.audioContext) return;
+            
+            try {
+                const oscillator = state.audioContext.createOscillator();
+                const gainNode = state.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(state.audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, state.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, state.audioContext.currentTime + 1);
+                
+                oscillator.start(state.audioContext.currentTime);
+                oscillator.stop(state.audioContext.currentTime + 1);
+            } catch (e) {
+                console.log("Ошибка воспроизведения звука");
+            }
         }
-    }
 
-    async function saveTask() {
-        const title = document.getElementById('c-title').value;
-        const price = document.getElementById('c-price').value;
-        const desc = document.getElementById('c-desc').value;
-        await _supabase.from('tasks').insert([{ title, price, description: desc, lat: state.pickCoords.lat, lon: state.pickCoords.lng, client_id: u.id }]);
-        closeOverlay(); showToast("Заказ опубликован!");
-    }
+        async function checkAuth() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (session) {
+                state.user = session.user;
+                showUserInfo();
+            }
+        }
 
-    function signOut() { _supabase.auth.signOut().then(() => location.reload()); }
+        function showUserInfo() {
+            document.getElementById('authButtons').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'flex';
+            document.getElementById('userEmail').textContent = state.user.email;
+        }
 
-    window.onload = initApp;
-</script>
+        function showAuthButtons() {
+            document.getElementById('authButtons').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'none';
+        }
 
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+
+        function validateAuth(email, password) {
+            if (!email || !password) {
+                showToast("Заполните все поля");
+                return false;
+            }
+            if (password.length < 6) {
+                showToast("Пароль должен быть минимум 6 символов");
+                return false;
+            }
+            return true;
+        }
+
+        async function login() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            
+            if (!validateAuth(email, password)) return;
+            
+            const { data, error } = await _supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+            
+            if (error) {
+                showToast(error.message);
+                return;
+            }
+            
+            state.user = data.user;
+            showUserInfo();
+            closeAuthModal();
+            showToast("Вход выполнен успешно");
+            loadOrders();
+        }
+
+        async function register() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            
+            if (!validateAuth(email, password)) return;
+            
+            const { data, error } = await _supabase.auth.signUp({
+                email,
+                password
+            });
+            
+            if (error) {
+                showToast(error.message);
+                return;
+            }
+            
+            showToast("Регистрация успешна! Проверьте вашу почту");
+            closeAuthModal();
+        }
+
+        async function logout() {
+            await _supabase.auth.signOut();
+            state.user = null;
+            showAuthButtons();
+            showToast("Вы вышли из системы");
+        }
+
+        function switchTab(tabName) {
+            // Обновляем активные кнопки
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Активируем выбранную вкладку
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Обновляем карту при переключении
+            setTimeout(() => {
+                if (state.map) {
+                    state.map.invalidateSize();
+                }
+            }, 50);
+        }
+
+        function centerMap() {
+            if (state.currentPosition) {
+                state.map.setView(state.currentPosition, 16);
+            } else {
+                state.map.locate({setView: true, maxZoom: 16});
+            }
+        }
+
+        async function searchAddress() {
+            const address = document.getElementById('addressSearch').value;
+            if (!address) return;
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+                );
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    const { lat, lon } = data[0];
+                    state.map.setView([lat, lon], 15);
+                    
+                    if (state.selectedLocation) {
+                        state.map.removeLayer(state.selectedLocation);
+                    }
+                    state.selectedLocation = L.marker([lat, lon]).addTo(state.map)
+                        .bindPopup(address)
+                        .openPopup();
+                        
+                    showToast("Адрес найден");
+                } else {
+                    showToast("Адрес не найден");
+                }
+            } catch (error) {
+                showToast("Ошибка при поиске адреса");
+            }
+        }
+
+        async function createOrder() {
+            if (!state.user) {
+                showToast("Сначала войдите в систему");
+                openAuthModal();
+                return;
+            }
+            
+            if (!state.selectedLocation) {
+                showToast("Выберите место на карте");
+                return;
+            }
+            
+            const title = document.getElementById('orderTitle').value;
+            const description = document.getElementById('orderDescription').value;
+            const price = document.getElementById('orderPrice').value;
+            
+            if (!title || !description || !price) {
+                showToast("Заполните все поля");
+                return;
+            }
+            
+            const order = {
+                title,
+                description,
+                price: parseInt(price),
+                location: {
+                    lat: state.selectedLocation.getLatLng().lat,
+                    lng: state.selectedLocation.getLatLng().lng
+                },
+                customer_id: state.user.id,
+                status: 'new',
+                created_at: new Date().toISOString()
+            };
+            
+            // Здесь будет запрос к Supabase
+            showToast("Заказ создан успешно!");
+            
+            // Очистка формы
+            document.getElementById('orderTitle').value = '';
+            document.getElementById('orderDescription').value = '';
+            document.getElementById('orderPrice').value = '';
+            
+            // Переключение на вкладку заказов
+            switchTab('orders');
+        }
+
+        async function loadOrders() {
+            if (!state.user) return;
+            
+            // Показываем скелетоны
+            const skeletonCount = 3;
+            const ordersContainer = document.getElementById('availableOrders');
+            ordersContainer.innerHTML = '';
+            
+            for (let i = 0; i < skeletonCount; i++) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'order-card skeleton skeleton-order';
+                ordersContainer.appendChild(skeleton);
+            }
+            
+            // Здесь будет загрузка заказов из Supabase
+            // Для примеси используем тестовые данные
+            setTimeout(() => {
+                displayOrders(getTestOrders());
+            }, 1000);
+        }
+
+        function getTestOrders() {
+            return [
+                {
+                    id: 1,
+                    title: "Купить продукты",
+                    description: "Нужно купить молоко, хлеб, яйца и фрукты в магазине у дома",
+                    price: 500,
+                    location: { lat: 55.7558, lng: 37.6173 },
+                    status: "new",
+                    created_at: new Date().toISOString(),
+                    customer: { email: "test@example.com" }
+                },
+                {
+                    id: 2,
+                    title: "Доставить документы",
+                    description: "Отвезти документы из офиса на Ленинском проспекте в налоговую",
+                    price: 1200,
+                    location: { lat: 55.7158, lng: 37.6273 },
+                    status: "new",
+                    created_at: new Date().toISOString(),
+                    customer: { email: "office@example.com" }
+                }
+            ];
+        }
+
+        function displayOrders(orders) {
+            const container = document.getElementById('availableOrders');
+            container.innerHTML = '';
+            
+            orders.forEach(order => {
+                const orderCard = createOrderCard(order);
+                container.appendChild(orderCard);
+            });
+            
+            // Повторно настраиваем свайпы
+            setupSwipeGestures();
+        }
+
+        function createOrderCard(order) {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+            card.dataset.orderId = order.id;
+            
+            const statusClass = `status-${order.status.replace(' ', '-')}`;
+            
+            card.innerHTML = `
+                <div class="order-header">
+                    <div class="order-title">${order.title}</div>
+                    <div class="order-price">${order.price} ₽</div>
+                </div>
+                <div class="order-info">
+                    <div class="info-item">📍 ${order.location.lat.toFixed(4)}, ${order.location.lng.toFixed(4)}</div>
+                    <div class="info-item">👤 ${order.customer.email}</div>
+                    <div class="info-item">🕐 ${new Date(order.created_at).toLocaleString()}</div>
+                </div>
+                <div class="order-description">${order.description}</div>
+                <div class="order-actions">
+                    <button class="btn btn-primary" onclick="takeOrder(${order.id})">Взять заказ</button>
+                    <button class="btn btn-outline" onclick="openChat(${order.id})">Чат</button>
+                </div>
+                <div class="swipe-indicator swipe-right">Взять в работу →</div>
+                <div class="swipe-indicator swipe-left">← Скрыть</div>
+            `;
+            
+            return card;
+        }
+
+        function setupSwipeGestures() {
+            document.querySelectorAll('.order-card').forEach(card => {
+                const hammer = new Hammer(card);
+                let startX = 0;
+                let currentX = 0;
+                
+                hammer.on('panstart', (e) => {
+                    startX = 0;
+                    currentX = 0;
+                    card.classList.add('swiping');
+                });
+                
+                hammer.on('pan', (e) => {
+                    currentX = e.deltaX;
+                    card.style.transform = `translateX(${currentX}px)`;
+                    
+                    // Показываем индикаторы
+                    const rightIndicator = card.querySelector('.swipe-right');
+                    const leftIndicator = card.querySelector('.swipe-left');
+                    
+                    if (currentX > 50) {
+                        rightIndicator.style.opacity = Math.min(currentX / 100, 1);
+                    } else if (currentX < -50) {
+                        leftIndicator.style.opacity = Math.min(-currentX / 100, 1);
+                    }
+                });
+                
+                hammer.on('panend', (e) => {
+                    card.classList.remove('swiping');
+                    
+                    if (currentX > 100) {
+                        // Свайп вправо - взять заказ
+                        card.style.transform = 'translateX(100%)';
+                        setTimeout(() => {
+                            takeOrder(card.dataset.orderId);
+                            card.remove();
+                        }, 300);
+                    } else if (currentX < -100) {
+                        // Свайп влево - скрыть
+                        card.style.transform = 'translateX(-100%)';
+                        setTimeout(() => card.remove(), 300);
+                    } else {
+                        // Возврат на место
+                        card.style.transform = 'translateX(0)';
+                        card.querySelector('.swipe-right').style.opacity = 0;
+                        card.querySelector('.swipe-left').style.opacity = 0;
+                    }
+                });
+            });
+        }
+
+        function takeOrder(orderId) {
+            if (!state.user) {
+                showToast("Сначала войдите в систему");
+                openAuthModal();
+                return;
+            }
+            
+            showToast(`Заказ #${orderId} принят в работу`);
+            playNotificationSound();
+            
+            // Здесь будет обновление статуса заказа в Supabase
+        }
+
+        function openChat(orderId) {
+            state.activeChat = orderId;
+            document.getElementById('chatOrderId').textContent = orderId;
+            document.getElementById('chatModal').classList.add('active');
+            loadChatMessages(orderId);
+        }
+
+        function closeChat() {
+            state.activeChat = null;
+            document.getElementById('chatModal').classList.remove('active');
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('chatInput').value = '';
+        }
+
+        function chatKeyPress(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            if (!state.activeChat || !state.user) return;
+            
+            const message = document.getElementById('chatInput').value.trim();
+            if (!message) return;
+            
+            // Добавление сообщения в чат
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message message-outgoing';
+            messageDiv.textContent = message;
+            document.getElementById('chatMessages').appendChild(messageDiv);
+            
+            // Прокрутка вниз
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Очистка поля ввода
+            document.getElementById('chatInput').value = '';
+            
+            // Здесь будет сохранение сообщения в Supabase
+        }
+
+        async function uploadChatPhoto() {
+            if (!state.activeChat) return;
+            
+            const fileInput = document.getElementById('chatPhoto');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            // Показываем превью
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.createElement('img');
+                preview.src = e.target.result;
+                preview.className = 'photo-preview';
+                document.getElementById('photoPreview').appendChild(preview);
+            };
+            reader.readAsDataURL(file);
+            
+            // Здесь будет загрузка в Supabase Storage
+            showToast("Фото загружается...");
+        }
+
+        function subscribeToOrders() {
+            // Здесь будет подписка на новые заказы через Supabase Realtime
+            // При получении нового заказа:
+            // 1. Добавить его в список
+            // 2. Воспроизвести звук уведомления
+            // 3. Показать toast-уведомление
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = newTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const button = document.querySelector('.theme-toggle');
+            button.textContent = savedTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        function showToast(message) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: "linear-gradient(to right, #4F46E5, #4338CA)",
+                stopOnFocus: true
+            }).showToast();
+        }
+
+        // Экспорт функций для использования в HTML
+        window.toggleTheme = toggleTheme;
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.login = login;
+        window.register = register;
+        window.logout = logout;
+        window.switchTab = switchTab;
+        window.centerMap = centerMap;
+        window.searchAddress = searchAddress;
+        window.createOrder = createOrder;
+        window.takeOrder = takeOrder;
+        window.openChat = openChat;
+        window.closeChat = closeChat;
+        window.sendMessage = sendMessage;
+        window.chatKeyPress = chatKeyPress;
+        window.uploadChatPhoto = uploadChatPhoto;
+    </script>
 </body>
 </html>
