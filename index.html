@@ -19,14 +19,14 @@
         .card { background: var(--w); border: 1px solid #EEE; padding: 16px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
         .card h3 { margin: 0 0 5px 0; font-size: 16px; }
         .price { float: right; color: var(--p); font-weight: 800; }
-        .status { font-size:12px; color:#888; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; display: block;}
+        .status { font-size:10px; color:#888; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; display: block;}
         .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         .btn-p { background: var(--p); color: white; }
         .btn-s { background: var(--grey); color: black; }
         input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
         #auth-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
         .role-selector { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
-        .role-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+        .role-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; font-size: 14px; }
         .role-btn.active { border: 2px solid var(--p); color: var(--p); font-weight: bold; background: #f0f7ff; }
         .overlay { position: fixed; inset: 0; background: white; z-index: 5000; transform: translateY(100%); transition: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
         .overlay.open { transform: translateY(0); }
@@ -47,18 +47,18 @@
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="pass" placeholder="Пароль">
         <button class="btn btn-p" onclick="doLogin()">Войти</button>
-        <p onclick="toggleReg()" style="color:var(--p); cursor:pointer; margin-top:20px;">Нет аккаунта? Зарегистрироваться</p>
+        <p onclick="toggleReg()" style="color:var(--p); cursor:pointer; margin-top:20px; font-size:14px;">Нет аккаунта? Зарегистрироваться</p>
     </div>
     <div id="reg-form" style="width: 100%; max-width: 320px; display:none;">
         <input type="text" id="r-name" placeholder="Ваше Имя">
         <input type="email" id="r-email" placeholder="Email">
         <input type="password" id="r-pass" placeholder="Пароль (мин 6 символов)">
         <div class="role-selector">
-            <div class="role-btn active" id="role-client" onclick="setRole('client')">Я Заказчик</div>
-            <div class="role-btn" id="role-worker" onclick="setRole('worker')">Я Исполнитель</div>
+            <div class="role-btn active" id="role-client" onclick="setRole('client')">Заказчик</div>
+            <div class="role-btn" id="role-worker" onclick="setRole('worker')">Исполнитель</div>
         </div>
         <button class="btn btn-p" onclick="doReg()">Создать аккаунт</button>
-        <p onclick="toggleReg()" style="color:#888; cursor:pointer; margin-top:20px;">Назад</p>
+        <p onclick="toggleReg()" style="color:#888; cursor:pointer; margin-top:20px; font-size:14px;">← Назад</p>
     </div>
 </div>
 
@@ -75,7 +75,7 @@
 <div id="profile-ov" class="overlay">
     <div class="header">Мой Профиль <span onclick="closeOverlay('profile-ov')">✕</span></div>
     <div style="padding:30px; text-align:center;">
-        <h2 id="p-name">Имя</h2>
+        <h2 id="p-name">Загрузка...</h2>
         <div id="p-role" style="color:#888;">Роль</div>
         <button class="btn btn-s" onclick="logout()" style="color:red; margin-top:40px;">Выйти из аккаунта</button>
     </div>
@@ -103,29 +103,36 @@
 </div>
 
 <script>
-    // --- Инициализация ---
+    // 1. ИНИЦИАЛИЗАЦИЯ
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+    
+    let supabase;
+    try {
+        supabase = window.supabase.createClient(SB_URL, SB_KEY);
+        console.log("Supabase подключен успешно");
+    } catch (e) {
+        console.error("Ошибка подключения Supabase:", e);
+    }
 
     let map, user = null, markers = {}, pickMode = false, pickCoords = null, activeChatId = null, regRole = 'client';
 
-    // --- Функции (Объявлены через function, чтобы не было ошибок ReferenceError) ---
-
-    function toggleReg() {
+    // 2. ГЛОБАЛЬНЫЕ ФУНКЦИИ (ПРИНУДИТЕЛЬНО В WINDOW)
+    window.toggleReg = function() {
         const login = document.getElementById('login-form');
         const reg = document.getElementById('reg-form');
-        login.style.display = (login.style.display === 'none') ? 'block' : 'none';
-        reg.style.display = (reg.style.display === 'none') ? 'block' : 'none';
-    }
+        const isLoginVisible = login.style.display !== 'none';
+        login.style.display = isLoginVisible ? 'none' : 'block';
+        reg.style.display = isLoginVisible ? 'block' : 'none';
+    };
 
-    function setRole(role) {
+    window.setRole = function(role) {
         regRole = role;
         document.getElementById('role-client').classList.toggle('active', role === 'client');
         document.getElementById('role-worker').classList.toggle('active', role === 'worker');
-    }
+    };
 
-    async function doReg() {
+    window.doReg = async function() {
         const email = document.getElementById('r-email').value;
         const pass = document.getElementById('r-pass').value;
         const name = document.getElementById('r-name').value;
@@ -134,110 +141,94 @@
         const { data, error } = await supabase.auth.signUp({ email, password: pass });
         if(error) return alert("Ошибка: " + error.message);
 
-        // Создаем профиль в БД
-        await supabase.from('profiles').insert([{ id: data.user.id, name, role: regRole }]);
-        alert("Регистрация успешна!");
+        const { error: pErr } = await supabase.from('profiles').insert([{ id: data.user.id, name, role: regRole }]);
+        if(pErr) console.error("Ошибка создания профиля:", pErr);
+        
+        alert("Регистрация успешна! Войдите в аккаунт.");
         location.reload();
-    }
+    };
 
-    async function doLogin() {
+    window.doLogin = async function() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if(error) alert("Ошибка: " + error.message);
         else location.reload();
-    }
+    };
 
-    async function logout() {
+    window.logout = async function() {
         await supabase.auth.signOut();
         location.reload();
-    }
+    };
 
-    function startAdd() { document.getElementById('add-ov').classList.add('open'); }
-    function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+    window.startAdd = () => document.getElementById('add-ov').classList.add('open');
+    window.closeOverlay = (id) => document.getElementById(id).classList.remove('open');
 
-    function pickLocation() {
-        closeOverlay('add-ov');
+    window.pickLocation = () => {
+        document.getElementById('add-ov').classList.remove('open');
         pickMode = true;
-        alert("Коснись карты в нужном месте");
-    }
+        alert("Коснись карты, чтобы выбрать место");
+    };
 
-    async function publishTask() {
+    window.publishTask = async function() {
         const title = document.getElementById('n-title').value;
         const price = document.getElementById('n-price').value;
-        if(!title || !price || !pickCoords) return alert("Заполни описание и выбери точку");
+        if(!title || !price || !pickCoords) return alert("Заполни данные");
         
-        await supabase.from('tasks').insert([{
-            title, price, lat: pickCoords.lat, lon: pickCoords.lng, 
+        const { error } = await supabase.from('tasks').insert([{
+            title, price: parseInt(price), lat: pickCoords.lat, lon: pickCoords.lng, 
             client_id: user.id, status: 'searching'
         }]);
+        if(error) alert(error.message);
+        else location.reload();
+    };
+
+    window.takeTask = async function(id) {
+        await supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', id);
         location.reload();
-    }
+    };
 
-    async function takeTask(taskId) {
-        if(confirm("Берете этот заказ?")) {
-            await supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', taskId);
-            location.reload();
-        }
-    }
+    window.finishTask = async function(id) {
+        await supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+        location.reload();
+    };
 
-    async function finishTask(taskId) {
-        if(confirm("Подтвердить выполнение?")) {
-            await supabase.from('tasks').update({ status: 'completed' }).eq('id', taskId);
-            location.reload();
-        }
-    }
-
-    async function openChat(taskId, title) {
+    window.openChat = function(taskId, title) {
         activeChatId = taskId;
         document.getElementById('chat-title').innerText = title;
         document.getElementById('chat-ov').classList.add('open');
         loadMessages(taskId);
-    }
+    };
 
-    function closeChat() { closeOverlay('chat-ov'); activeChatId = null; }
+    window.closeChat = () => { document.getElementById('chat-ov').classList.remove('open'); activeChatId = null; };
 
-    async function loadMessages(taskId) {
-        const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at');
-        const box = document.getElementById('chat-msgs');
-        box.innerHTML = '';
-        data?.forEach(msg => {
-            const div = document.createElement('div');
-            div.className = msg.sender_id === user.id ? 'msg me' : 'msg other';
-            div.innerText = msg.text;
-            box.appendChild(div);
-        });
-        box.scrollTop = box.scrollHeight;
-    }
-
-    async function sendMsg() {
+    window.sendMsg = async function() {
         const input = document.getElementById('msg-txt');
         const text = input.value.trim();
         if(!text) return;
         await supabase.from('messages').insert([{ task_id: activeChatId, sender_id: user.id, text }]);
         input.value = '';
         loadMessages(activeChatId);
-    }
+    };
 
-    function openProfile() {
+    window.openProfile = function() {
         document.getElementById('profile-ov').classList.add('open');
-        if(user?.profile) {
+        if(user && user.profile) {
             document.getElementById('p-name').innerText = user.profile.name;
             document.getElementById('p-role').innerText = user.profile.role === 'client' ? 'Заказчик' : 'Исполнитель';
         }
-    }
+    };
 
-    // --- Системная инициализация ---
-
-    async function init() {
+    // 3. ВНУТРЕННЯЯ ЛОГИКА
+    async function initApp() {
         const { data: { session } } = await supabase.auth.getSession();
         if(session) {
             user = session.user;
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-            user.profile = profile;
+            const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            user.profile = prof;
             
             document.getElementById('auth-screen').style.display = 'none';
-            if(profile.role === 'client') document.getElementById('add-btn').style.display = 'block';
+            if(prof && prof.role === 'client') document.getElementById('add-btn').style.display = 'block';
 
             initMap();
             loadTasks();
@@ -251,11 +242,10 @@
         map.on('click', e => {
             if(pickMode) {
                 pickCoords = e.latlng;
-                L.marker(e.latlng).addTo(map).bindPopup("Место задания").openPopup();
+                L.marker(e.latlng).addTo(map);
                 document.getElementById('add-ov').classList.add('open');
                 document.getElementById('add-form').style.opacity = 1;
                 document.getElementById('add-form').style.pointerEvents = 'auto';
-                document.getElementById('pick-btn').innerText = "✅ Место выбрано";
                 pickMode = false;
             }
         });
@@ -265,32 +255,36 @@
         const { data: tasks } = await supabase.from('tasks').select('*').order('created_at', {ascending: false});
         const feed = document.getElementById('feed');
         feed.innerHTML = '';
-
         tasks?.forEach(t => {
             const isMy = (t.client_id === user.id || t.worker_id === user.id);
             if(t.status === 'searching' || isMy) {
                 if(t.status === 'searching') L.marker([t.lat, t.lon]).addTo(map).bindPopup(t.title);
-                
                 const card = document.createElement('div');
                 card.className = 'card';
                 let btns = '';
-                
-                if(user.profile.role === 'worker' && t.status === 'searching') {
-                    btns = `<button class="btn btn-p" onclick="takeTask(${t.id})">Взять за ${t.price}₽</button>`;
-                } else if(isMy && t.status === 'active') {
-                    btns = `<div style="display:flex;gap:10px;">
-                        <button class="btn btn-s" onclick="openChat(${t.id},'${t.title}')">💬 Чат</button>
-                        ${user.profile.role === 'client' ? `<button class="btn btn-p" onclick="finishTask(${t.id})">Принять</button>` : ''}
-                    </div>`;
-                }
-                
+                if(user.profile.role === 'worker' && t.status === 'searching') btns = `<button class="btn btn-p" onclick="takeTask(${t.id})">Взять заказ</button>`;
+                if(isMy && t.status === 'active') btns = `<button class="btn btn-s" onclick="openChat(${t.id},'${t.title}')">Чат</button>`;
                 card.innerHTML = `<span class="status">${t.status}</span><div class="price">${t.price}₽</div><h3>${t.title}</h3>${btns}`;
                 feed.appendChild(card);
             }
         });
     }
 
-    init();
+    async function loadMessages(taskId) {
+        const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at');
+        const box = document.getElementById('chat-msgs');
+        box.innerHTML = '';
+        data?.forEach(m => {
+            const d = document.createElement('div');
+            d.className = m.sender_id === user.id ? 'msg me' : 'msg other';
+            d.innerText = m.text;
+            box.appendChild(d);
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // Запуск
+    document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
