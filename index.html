@@ -3,380 +3,449 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>МикроПомощь PRO | Система Рейтинга</title>
+    <title>MicroHelp PRO</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <style>
-        :root { --p: #007AFF; --bg: #F2F2F7; --text: #1C1C1E; --green: #34C759; --orange: #FF9500; --red: #FF3B30; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; overflow: hidden; color: var(--text); }
+        :root { --p: #007AFF; --bg: #F2F2F7; --text: #000; --w: #fff; --grey: #E5E5EA; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        .top-nav { position: fixed; top: 20px; left: 0; right: 0; z-index: 5000; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: none; }
-        .circle-btn { width: 56px; height: 56px; background: white; border-radius: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.15); pointer-events: auto; font-size: 24px; cursor: pointer; border: none; }
-
-        #main-layout { display: flex; flex-direction: column; height: 100vh; }
-        #map-container { height: 40%; width: 100%; position: relative; z-index: 1; }
-        #map { height: 100%; width: 100%; }
-
-        #content-container { height: 60%; background: var(--bg); border-top-left-radius: 30px; border-top-right-radius: 30px; margin-top: -30px; z-index: 100; position: relative; overflow-y: auto; padding: 25px 20px; box-shadow: 0 -15px 30px rgba(0,0,0,0.08); }
-
-        .card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.02); }
-        .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
+        /* КАРТА И ПАНЕЛЬ */
+        #map { height: 45%; width: 100%; z-index: 1; }
+        #panel { height: 55%; background: var(--w); border-radius: 24px 24px 0 0; margin-top: -20px; z-index: 10; position: relative; display: flex; flex-direction: column; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); }
         
-        .btn { width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px; transition: 0.2s; }
+        /* СПИСОК ЗАДАЧ */
+        #feed { flex: 1; overflow-y: auto; padding: 20px; }
+        .card { background: var(--w); border: 1px solid #EEE; padding: 16px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .card h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .price { float: right; color: var(--p); font-weight: 800; }
+        .status { font-size:12px; color:#888; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; display: block;}
+        
+        /* ЭЛЕМЕНТЫ УПРАВЛЕНИЯ */
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         .btn-p { background: var(--p); color: white; }
-        .btn-o { background: #F2F2F7; color: var(--p); }
-        .btn-g { background: var(--green); color: white; }
-
-        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 6000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
-        .overlay.active { transform: translateY(0); }
-        .ov-header { padding: 20px; background: white; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #EEE; font-weight: 800; }
-
-        #chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #F2F2F7; }
-        .msg { padding: 12px 16px; border-radius: 20px; max-width: 75%; font-size: 14px; }
-        .msg.me { background: var(--p); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .msg.other { background: white; align-self: flex-start; border-bottom-left-radius: 4px; }
-
-        .rating-star { font-size: 28px; color: #DDD; cursor: pointer; transition: 0.2s; }
-        .rating-star.active { color: var(--orange); }
-
-        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: white; padding: 16px 24px; border-radius: 50px; z-index: 9999; display: none; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .btn-s { background: var(--grey); color: black; }
+        .btn:active { transform: scale(0.98); }
         
-        .stat-box { display: flex; justify-content: space-around; background: #f8f9fa; padding: 15px; border-radius: 15px; margin: 15px 0; }
-        .stat-item { text-align: center; }
-        .stat-val { display: block; font-weight: 800; font-size: 18px; color: var(--p); }
-        .stat-lab { font-size: 10px; opacity: 0.5; text-transform: uppercase; }
+        input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--p); }
+
+        /* ЭКРАН АВТОРИЗАЦИИ */
+        #auth-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .role-selector { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
+        .role-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+        .role-btn.active { border: 2px solid var(--p); color: var(--p); font-weight: bold; background: #f0f7ff; }
+
+        /* ОВЕРЛЕИ (Всплывающие окна) */
+        .overlay { position: fixed; inset: 0; background: white; z-index: 5000; transform: translateY(100%); transition: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
+        .overlay.open { transform: translateY(0); }
+        .header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; font-weight: 800; font-size: 18px; background: #fff; }
+        
+        /* ЧАТ */
+        #chat-msgs { flex: 1; overflow-y: auto; padding: 15px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+        .msg { max-width: 75%; padding: 10px 14px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
+        .msg.me { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
+        .msg.other { align-self: flex-start; background: white; border-bottom-left-radius: 4px; border: 1px solid #ddd; }
+        #chat-input-area { padding: 10px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; }
+        
+        /* КНОПКА ПРОФИЛЯ */
+        .fab { position: fixed; top: 20px; right: 20px; width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 2000; font-size: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="toast"></div>
-
-<div class="top-nav" id="ui-controls" style="display:none">
-    <button class="circle-btn" onclick="openOverlay('ov-create')" id="btn-add">➕</button>
-    <button class="circle-btn" onclick="openOverlay('ov-profile')">👤</button>
-</div>
-
-<div id="scr-auth" style="position:fixed; inset:0; background:white; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; text-align:center;">
+<div id="auth-screen">
     <div style="font-size: 60px; margin-bottom: 10px;">🤝</div>
-    <h1 style="font-size: 34px; font-weight: 900; margin: 0; color: var(--p);">MicroHelp PRO</h1>
-    <p style="color: #8E8E93; margin: 10px 0 40px 0;">Надежный сервис взаимопомощи</p>
-    <button class="btn btn-p" onclick="enter('client')">Заказать услугу</button>
-    <button class="btn btn-o" onclick="enter('worker')" style="margin-top:12px;">Стать исполнителем</button>
-</div>
-
-<div id="main-layout" style="display:none">
-    <div id="map-container"><div id="map"></div></div>
-    <div id="content-container">
-        <h2 style="margin: 0 0 20px 0; font-weight: 800; letter-spacing: -0.5px;">Задания поблизости</h2>
-        <div id="list-feed"></div>
+    <h1 style="margin: 0 0 10px 0;">MicroHelp PRO</h1>
+    <p style="color:#888; margin-bottom: 30px;">Вход в систему</p>
+    
+    <div id="login-form" style="width: 100%; max-width: 320px;">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="pass" placeholder="Пароль">
+        <button class="btn btn-p" onclick="doLogin()">Войти</button>
+        <p onclick="toggleReg()" style="color:var(--p); font-size:14px; margin-top:20px; cursor:pointer;">Нет аккаунта? Зарегистрироваться</p>
     </div>
-</div>
 
-<div id="ov-profile" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Мой профиль</div>
-    <div style="padding:20px; overflow-y:auto;">
-        <div class="card" style="text-align:center;">
-            <div style="font-size:50px;">👤</div>
-            <h2 id="p-name" style="margin:5px 0;">Имя...</h2>
-            
-            <div class="stat-box">
-                <div class="stat-item">
-                    <span class="stat-val" id="p-rating-val">5.0</span>
-                    <span class="stat-lab">Рейтинг</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-val" id="p-done-val">0</span>
-                    <span class="stat-lab">Заказов</span>
-                </div>
-            </div>
-            <div style="font-size:11px; opacity:0.4;">ID: <span id="p-id"></span></div>
+    <div id="reg-form" style="width: 100%; max-width: 320px; display:none;">
+        <input type="text" id="r-name" placeholder="Ваше Имя">
+        <input type="email" id="r-email" placeholder="Email">
+        <input type="password" id="r-pass" placeholder="Пароль (мин 6 символов)">
+        
+        <div class="role-selector">
+            <div class="role-btn active" id="role-client" onclick="setRole('client')">Я Заказчик</div>
+            <div class="role-btn" id="role-worker" onclick="setRole('worker')">Я Исполнитель</div>
         </div>
         
-        <h3>История и активность</h3>
-        <div id="p-my-orders"></div>
-
-        <h3 style="margin-top:25px;">Отзывы</h3>
-        <div id="p-reviews"></div>
+        <button class="btn btn-p" onclick="doReg()">Создать аккаунт</button>
+        <p onclick="toggleReg()" style="color:#888; font-size:14px; margin-top:20px; cursor:pointer;">← Назад ко входу</p>
     </div>
 </div>
 
-<div id="ov-create" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> Создать заказ</div>
-    <div style="padding:20px; overflow-y:auto;">
-        <button class="btn btn-o" onclick="startPicking()" id="pick-btn" style="border: 2px dashed var(--p);">📍 Указать точку на карте</button>
-        <div id="form-fields" style="margin-top:20px; opacity:0.3; pointer-events:none;">
-            <input id="c-title" placeholder="Что нужно сделать?" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box;">
-            <textarea id="c-desc" placeholder="Детальное описание..." rows="4" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box; font-family:inherit;"></textarea>
-            <input id="c-price" type="number" placeholder="Бюджет (₽)" style="width:100%; padding:16px; border-radius:14px; border:1px solid #DDD; margin-bottom:12px; box-sizing:border-box;">
-            <button class="btn btn-p" onclick="createTask()">Разместить задание</button>
+<div class="fab" onclick="openProfile()">👤</div>
+
+<div id="map"></div>
+<div id="panel">
+    <div style="padding: 20px 20px 10px 20px;">
+        <h2 style="margin:0;">Лента заданий</h2>
+        <button id="add-btn" class="btn btn-p" onclick="startAdd()" style="margin-top:15px; display:none;">+ Создать задание</button>
+    </div>
+    <div id="feed"></div>
+</div>
+
+<div id="profile-ov" class="overlay">
+    <div class="header">Мой Профиль <span onclick="document.getElementById('profile-ov').classList.remove('open')" style="cursor:pointer">✕</span></div>
+    <div style="padding:30px; text-align:center;">
+        <div style="font-size:60px; margin-bottom:10px;">👤</div>
+        <h2 id="p-name" style="margin:0;">Загрузка...</h2>
+        <div id="p-role" style="color:#888; margin-bottom:30px; font-weight:600;">...</div>
+        <button class="btn btn-s" onclick="logout()" style="color:red;">Выйти из аккаунта</button>
+    </div>
+</div>
+
+<div id="chat-ov" class="overlay">
+    <div class="header">
+        <span id="chat-title">Чат</span> 
+        <span onclick="closeChat()" style="cursor:pointer">✕</span>
+    </div>
+    <div id="chat-msgs"></div>
+    <div id="chat-input-area">
+        <input id="msg-txt" placeholder="Написать сообщение..." style="margin:0;">
+        <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding: 0 20px;">➤</button>
+    </div>
+</div>
+
+<div id="add-ov" class="overlay">
+    <div class="header">Новое задание <span onclick="document.getElementById('add-ov').classList.remove('open')" style="cursor:pointer">✕</span></div>
+    <div style="padding:20px;">
+        <button class="btn btn-s" id="pick-btn" onclick="pickLocation()" style="border: 2px dashed var(--p); color: var(--p);">📍 Указать место на карте</button>
+        
+        <div id="add-form" style="opacity:0.4; pointer-events:none; margin-top:25px; transition:0.3s;">
+            <input id="n-title" placeholder="Что нужно сделать? (Например: Починить кран)">
+            <input id="n-price" type="number" placeholder="Стоимость (₽)">
+            <button class="btn btn-p" onclick="publishTask()">Опубликовать задание</button>
         </div>
-    </div>
-</div>
-
-<div id="ov-review" class="overlay" style="background:rgba(0,0,0,0.7); justify-content:center; align-items:center;">
-    <div class="card" style="width:85%; text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
-        <h3 style="margin:0;">Оцените партнера</h3>
-        <p style="font-size:12px; opacity:0.6; margin:10px 0;">Ваш отзыв влияет на рейтинг пользователя</p>
-        <div style="margin:15px 0;">
-            <span class="rating-star" data-val="1" onclick="setStars(1)">★</span>
-            <span class="rating-star" data-val="2" onclick="setStars(2)">★</span>
-            <span class="rating-star" data-val="3" onclick="setStars(3)">★</span>
-            <span class="rating-star" data-val="4" onclick="setStars(4)">★</span>
-            <span class="rating-star" data-val="5" onclick="setStars(5)">★</span>
-        </div>
-        <textarea id="rev-text" placeholder="Комментарий к отзыву..." style="width:100%; padding:12px; border-radius:12px; border:1px solid #EEE; margin-bottom:15px;"></textarea>
-        <button class="btn btn-p" onclick="submitReview()">Подтвердить оценку</button>
-    </div>
-</div>
-
-<div id="ov-chat" class="overlay">
-    <div class="ov-header"><button onclick="closeOverlay()" style="border:none; background:none; font-size:24px;">✕</button> <span id="chat-title">Чат</span></div>
-    <div id="chat-box"></div>
-    <div style="padding:20px; background:white; display:flex; gap:10px; border-top:1px solid #EEE;">
-        <input id="chat-inp" placeholder="Ваше сообщение..." style="margin:0; flex:1; border:none; font-size:16px; outline:none;">
-        <button onclick="sendMsg()" class="btn btn-p" style="width:auto; margin:0; padding:0 20px;">➤</button>
     </div>
 </div>
 
 <script>
+    // ==========================================
+    // ВАШИ КЛЮЧИ SUPABASE
+    // ==========================================
     const SB_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
     const SB_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
-    const _supabase = supabase.createClient(SB_URL, SB_KEY);
+    // ==========================================
 
-    let u = { id: localStorage.getItem('mh_id') || 'u'+Math.floor(Math.random()*90000), role: '', name: '', lat: 55.75, lon: 37.61 };
-    localStorage.setItem('mh_id', u.id);
+    const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+    
+    let map;
+    let user = null;
+    let markers = {};
+    let pickMode = false;
+    let pickCoords = null;
+    let activeChatId = null;
+    let regRole = 'client';
 
-    let state = { map: null, markers: {}, isPicking: false, pickMarker: null, pickCoords: null, activeChat: null, revTask: null, revStars: 5 };
+    // 1. ПРОВЕРКА СЕССИИ ПРИ ЗАПУСКЕ
+    async function initApp() {
+        const { data } = await supabase.auth.getSession();
+        if(data.session) {
+            user = data.session.user;
+            await loadUserProfile(); // Загружаем роль и имя
+            startMainInterface();
+        } else {
+            // Если не вошел, показываем экран входа (он виден по умолчанию)
+        }
+    }
 
-    async function enter(role) {
-        u.role = role;
-        document.getElementById('scr-auth').style.display = 'none';
-        document.getElementById('main-layout').style.display = 'flex';
-        document.getElementById('ui-controls').style.display = 'flex';
-        document.getElementById('p-id').innerText = u.id;
-        if(role === 'worker') document.getElementById('btn-add').style.display = 'none';
+    async function loadUserProfile() {
+        // Получаем данные из таблицы profiles
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if(data) {
+            user.profile = data; // Сохраняем профиль в объект user
+        }
+    }
 
-        const { data: prof } = await _supabase.from('profiles').select('*').eq('id', u.id).single();
-        if(!prof) {
-            u.name = role === 'client' ? 'Заказчик' : 'Исполнитель';
-            await _supabase.from('profiles').insert([{ id: u.id, name: u.name, role, rating: 5.0, reviews_count: 0 }]);
-        } else { u.name = prof.name; }
-
+    function startMainInterface() {
+        document.getElementById('auth-screen').style.display = 'none';
         initMap();
-        sync();
+        loadTasks();
+        
+        // Включаем Realtime (обновление без перезагрузки)
+        supabase.channel('main_channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadTasks)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, handleNewMessage)
+            .subscribe();
+
+        // Если это Заказчик, показываем кнопку создания
+        if(user.profile && user.profile.role === 'client') {
+            document.getElementById('add-btn').style.display = 'block';
+        }
     }
 
+    // 2. АВТОРИЗАЦИЯ
+    function toggleReg() {
+        const login = document.getElementById('login-form');
+        const reg = document.getElementById('reg-form');
+        if(login.style.display === 'none') {
+            login.style.display = 'block'; reg.style.display = 'none';
+        } else {
+            login.style.display = 'none'; reg.style.display = 'block';
+        }
+    }
+
+    function setRole(r) {
+        regRole = r;
+        document.getElementById('role-client').className = r === 'client' ? 'role-btn active' : 'role-btn';
+        document.getElementById('role-worker').className = r === 'worker' ? 'role-btn active' : 'role-btn';
+    }
+
+    async function doReg() {
+        const email = document.getElementById('r-email').value;
+        const password = document.getElementById('r-pass').value;
+        const name = document.getElementById('r-name').value;
+        
+        if(!email || !password || !name) return alert("Заполните все поля");
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        
+        if(error) return alert("Ошибка: " + error.message);
+        
+        // Сразу создаем запись в таблице profiles
+        const { error: profileError } = await supabase.from('profiles').insert([
+            { id: data.user.id, name: name, role: regRole }
+        ]);
+
+        if(profileError) {
+            alert("Ошибка создания профиля: " + profileError.message);
+        } else {
+            alert("Регистрация успешна! Сейчас произойдет вход.");
+            location.reload();
+        }
+    }
+
+    async function doLogin() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('pass').value;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if(error) alert("Ошибка входа: " + error.message);
+        else location.reload();
+    }
+
+    async function logout() {
+        await supabase.auth.signOut();
+        location.reload();
+    }
+
+    // 3. КАРТА И ЗАДАНИЯ
     function initMap() {
-        state.map = L.map('map', { zoomControl: false }).setView([u.lat, u.lon], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        
-        navigator.geolocation.getCurrentPosition(p => {
-            u.lat = p.coords.latitude; u.lon = p.coords.longitude;
-            state.map.setView([u.lat, u.lon], 14);
-            L.circleMarker([u.lat, u.lon], { radius: 10, color: '#007AFF', fillOpacity: 0.8 }).addTo(state.map);
+        // Центр карты (Москва по умолчанию, или геолокация)
+        map = L.map('map', { zoomControl: false }).setView([55.75, 37.61], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // Геолокация
+        navigator.geolocation.getCurrentPosition(pos => {
+            map.setView([pos.coords.latitude, pos.coords.longitude], 14);
         });
 
-        state.map.on('click', e => {
-            if(!state.isPicking) return;
-            if(state.pickMarker) state.map.removeLayer(state.pickMarker);
-            state.pickCoords = e.latlng;
-            state.pickMarker = L.marker(e.latlng).addTo(state.map);
-            showToast("📍 Место выбрано!");
-            openOverlay('ov-create');
-            document.getElementById('pick-btn').innerText = '📍 Точка установлена';
-            document.getElementById('form-fields').style.opacity = '1';
-            document.getElementById('form-fields').style.pointerEvents = 'auto';
-            state.isPicking = false;
-        });
-    }
-
-    function sync() {
-        loadData();
-        _supabase.channel('global').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, loadData).subscribe();
-        _supabase.channel('chats').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => {
-            if(p.new.sender_id !== u.id) {
-                if(state.activeChat === p.new.task_id) loadMsgs();
-                else showToast("💬 Новое сообщение!");
+        // Клик по карте для выбора места
+        map.on('click', e => {
+            if(pickMode) {
+                pickCoords = e.latlng;
+                L.marker(pickCoords).addTo(map).bindPopup("Новое задание").openPopup();
+                
+                // Возвращаемся в форму
+                document.getElementById('add-ov').classList.add('open');
+                document.getElementById('add-form').style.opacity = 1;
+                document.getElementById('add-form').style.pointerEvents = 'auto';
+                document.getElementById('pick-btn').innerText = "✅ Точка выбрана";
+                document.getElementById('pick-btn').style.borderColor = "#34C759";
+                document.getElementById('pick-btn').style.color = "#34C759";
+                pickMode = false;
             }
-        }).subscribe();
+        });
     }
 
-    async function loadData() {
-        const { data: tasks } = await _supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        renderFeed(tasks);
-        renderProfileOrders(tasks);
-        updateMarkers(tasks);
-        loadProfileInfo();
+    async function loadTasks() {
+        const { data: tasks } = await supabase.from('tasks').select('*').order('created_at', {ascending: false});
+        renderTasks(tasks);
     }
 
-    function renderFeed(tasks) {
-        const feed = document.getElementById('list-feed');
+    function renderTasks(tasks) {
+        const feed = document.getElementById('feed');
         feed.innerHTML = '';
-        tasks.forEach(t => {
-            const isMine = t.client_id === u.id || t.worker_id === u.id;
-            if(t.status === 'searching' || (isMine && t.status === 'active')) {
-                feed.appendChild(createCard(t));
-            }
-        });
-    }
-
-    function renderProfileOrders(tasks) {
-        const container = document.getElementById('p-my-orders');
-        container.innerHTML = '';
-        tasks.forEach(t => {
-            if(t.client_id === u.id || t.worker_id === u.id) {
-                container.appendChild(createCard(t));
-            }
-        });
-    }
-
-    function createCard(t) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        const isMine = t.client_id === u.id || t.worker_id === u.id;
         
-        let color = t.status==='searching'?'#007AFF':(t.status==='active'?'#FF9500':'#34C759');
-        let label = t.status==='searching'?'Поиск':(t.status==='active'?'В работе':'Завершено');
+        // Очистка маркеров
+        Object.values(markers).forEach(m => map.removeLayer(m));
+        markers = {};
 
-        card.innerHTML = `
-            <span class="badge" style="background:${color}15; color:${color}">${label}</span>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <b style="font-size:17px; flex:1;">${t.title}</b>
-                <b style="color:var(--p); font-size:18px; margin-left:10px;">${t.price} ₽</b>
-            </div>
-            <p style="font-size:13px; opacity:0.7; margin:8px 0;">${t.description || ''}</p>
-        `;
-
-        if(t.status === 'searching' && u.role === 'worker') {
-            const btn = document.createElement('button'); btn.className = 'btn btn-p'; btn.innerText = 'Принять заказ';
-            btn.onclick = () => takeTask(t.id); card.appendChild(btn);
-        }
-
-        if(t.status === 'active' && isMine) {
-            const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '10px';
-            const chat = document.createElement('button'); chat.className = 'btn btn-o'; chat.innerText = '💬 Чат';
-            chat.onclick = () => openChat(t.id, t.title); row.appendChild(chat);
+        tasks.forEach(t => {
+            // Определяем, относится ли задача ко мне
+            const isMyTask = (t.client_id === user.id) || (t.worker_id === user.id);
             
-            if(u.role === 'client') {
-                const pay = document.createElement('button'); pay.className = 'btn btn-g'; pay.innerText = '✅ Оплатить';
-                pay.onclick = () => finishTask(t.id); row.appendChild(pay);
-            }
-            card.appendChild(row);
-        }
+            // Фильтр: показываем только "Поиск" или Мои активные задачи
+            if (t.status === 'searching' || (t.status === 'active' && isMyTask) || (t.status === 'completed' && isMyTask)) {
+                
+                // Добавляем маркер на карту (только для открытых заказов)
+                if (t.status === 'searching') {
+                    const m = L.marker([t.lat, t.lon]).addTo(map).bindPopup(`<b>${t.title}</b><br>${t.price} ₽`);
+                    markers[t.id] = m;
+                }
 
-        if(t.status === 'completed' && isMine) {
-            const field = u.role === 'client' ? 'client_reviewed' : 'worker_reviewed';
-            if(!t[field]) {
-                const rev = document.createElement('button'); rev.className = 'btn btn-o'; rev.innerText = '⭐ Оценить партнера';
-                rev.onclick = () => openReview(t.id); card.appendChild(rev);
-            }
-        }
-        return card;
-    }
+                // Рисуем карточку
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let statusLabel = '🟢 Поиск исполнителя';
+                if(t.status === 'active') statusLabel = '🟠 В работе';
+                if(t.status === 'completed') statusLabel = '⚪️ Завершено';
 
-    // --- ЛОГИКА РЕЙТИНГА ---
-    function setStars(n) {
-        state.revStars = n;
-        document.querySelectorAll('.rating-star').forEach((s, i) => {
-            s.classList.toggle('active', i < n);
+                let actionButtons = '';
+
+                // Если я Исполнитель и статус "Поиск" -> Кнопка "Взять"
+                if (user.profile.role === 'worker' && t.status === 'searching') {
+                    actionButtons = `<button class="btn btn-p" onclick="takeTask(${t.id})">✋ Взять за ${t.price} ₽</button>`;
+                }
+                
+                // Если задача активна и я участник -> Кнопка "Чат" и "Завершить"
+                if (t.status === 'active' && isMyTask) {
+                    let finishBtn = '';
+                    if (user.profile.role === 'client') {
+                        finishBtn = `<button class="btn btn-p" onclick="finishTask(${t.id})">✅ Работа принята</button>`;
+                    }
+                    actionButtons = `
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn btn-s" onclick="openChat(${t.id}, '${t.title}')">💬 Чат</button>
+                            ${finishBtn}
+                        </div>
+                    `;
+                }
+
+                if (t.status === 'completed' && isMyTask) {
+                    actionButtons = `<div style="text-align:center; color:green; margin-top:10px;">✨ Выполнено</div>`;
+                }
+
+                card.innerHTML = `
+                    <span class="status">${statusLabel}</span>
+                    <div class="price">${t.price} ₽</div>
+                    <h3>${t.title}</h3>
+                    ${actionButtons}
+                `;
+                feed.appendChild(card);
+            }
         });
     }
 
-    async function submitReview() {
-        const text = document.getElementById('rev-text').value;
-        const { data: task } = await _supabase.from('tasks').select('*').eq('id', state.revTask).single();
-        const targetId = u.role === 'client' ? task.worker_id : task.client_id;
+    // 4. ДЕЙСТВИЯ С ЗАДАЧАМИ
+    function startAdd() { document.getElementById('add-ov').classList.add('open'); }
+    
+    function pickLocation() {
+        document.getElementById('add-ov').classList.remove('open');
+        pickMode = true;
+        alert("Коснитесь карты, где нужно выполнить задание");
+    }
+
+    async function publishTask() {
+        const title = document.getElementById('n-title').value;
+        const price = document.getElementById('n-price').value;
         
-        // 1. Сохраняем отзыв
-        await _supabase.from('reviews').insert([{ 
-            task_id: state.revTask, from_id: u.id, to_id: targetId, 
-            stars: state.revStars, comment: text 
+        if(!title || !price || !pickCoords) return alert("Заполните описание, цену и выберите точку");
+
+        await supabase.from('tasks').insert([{
+            title: title,
+            price: parseInt(price),
+            lat: pickCoords.lat,
+            lon: pickCoords.lng,
+            client_id: user.id,
+            status: 'searching'
         }]);
 
-        // 2. Помечаем задачу как оцененную
-        const updField = u.role === 'client' ? { client_reviewed: true } : { worker_reviewed: true };
-        await _supabase.from('tasks').update(updField).eq('id', state.revTask);
-
-        // 3. ПЕРЕСЧЕТ РЕЙТИНГА для targetId
-        const { data: allRevs } = await _supabase.from('reviews').select('stars').eq('to_id', targetId);
-        const avg = allRevs.reduce((acc, r) => acc + r.stars, 0) / allRevs.length;
-        
-        await _supabase.from('profiles').update({ 
-            rating: parseFloat(avg.toFixed(1)), 
-            reviews_count: allRevs.length 
-        }).eq('id', targetId);
-
-        closeOverlay();
-        showToast("Спасибо! Рейтинг обновлен.");
-        loadData();
+        document.getElementById('add-ov').classList.remove('open');
+        document.getElementById('n-title').value = '';
+        document.getElementById('pick-btn').innerText = "📍 Указать место на карте";
+        document.getElementById('add-form').style.opacity = 0.4;
+        document.getElementById('add-form').style.pointerEvents = 'none';
+        pickCoords = null;
     }
 
-    async function loadProfileInfo() {
-        const { data: p } = await _supabase.from('profiles').select('*').eq('id', u.id).single();
-        if(p) {
-            document.getElementById('p-name').innerText = p.name;
-            document.getElementById('p-rating-val').innerText = p.rating.toFixed(1);
-            
-            // Считаем завершенные заказы
-            const { count } = await _supabase.from('tasks').select('*', { count: 'exact', head: true })
-                .eq('status', 'completed')
-                .or(`client_id.eq.${u.id},worker_id.eq.${u.id}`);
-            document.getElementById('p-done-val').innerText = count || 0;
+    async function takeTask(id) {
+        if(confirm("Вы уверены, что хотите взять этот заказ?")) {
+            await supabase.from('tasks').update({ status: 'active', worker_id: user.id }).eq('id', id);
         }
-
-        const { data: revs } = await _supabase.from('reviews').select('*').eq('to_id', u.id).order('created_at', {ascending: false});
-        const rList = document.getElementById('p-reviews');
-        rList.innerHTML = revs.length ? '' : '<p style="opacity:0.4; font-size:12px; text-align:center;">Пока нет отзывов</p>';
-        revs.forEach(r => {
-            rList.innerHTML += `
-                <div class="card" style="padding:15px; margin-bottom:10px; border-radius:18px;">
-                    <div style="color:var(--orange); font-size:12px; font-weight:800;">${'★'.repeat(r.stars)}</div>
-                    <p style="margin:5px 0 0 0; font-size:13px; line-height:1.4;">${r.comment || 'Без комментария'}</p>
-                </div>`;
-        });
     }
 
-    // --- ОСТАЛЬНАЯ ЛОГИКА ---
-    function startPicking() { state.isPicking = true; closeOverlay(); showToast("Нажмите на карту"); }
-    async function createTask() {
-        const title = document.getElementById('c-title').value;
-        const desc = document.getElementById('c-desc').value;
-        const price = document.getElementById('c-price').value;
-        if(!title || !state.pickCoords) return;
-        await _supabase.from('tasks').insert([{ title, description: desc, price: parseInt(price), client_id: u.id, lat: state.pickCoords.lat, lon: state.pickCoords.lng, status: 'searching' }]);
-        closeOverlay(); showToast("Задание на карте!");
+    async function finishTask(id) {
+        if(confirm("Подтверждаете выполнение и оплату?")) {
+            await supabase.from('tasks').update({ status: 'completed' }).eq('id', id);
+        }
     }
-    async function takeTask(id) { await _supabase.from('tasks').update({ status: 'active', worker_id: u.id }).eq('id', id); }
-    async function finishTask(id) { if(confirm("Завершить и оплатить?")) await _supabase.from('tasks').update({ status: 'completed' }).eq('id', id); }
-    async function openChat(id, title) { state.activeChat = id; document.getElementById('chat-title').innerText = title; openOverlay('ov-chat'); loadMsgs(); }
-    async function loadMsgs() {
-        if(!state.activeChat) return;
-        const { data } = await _supabase.from('messages').select('*').eq('task_id', state.activeChat).order('created_at');
-        const box = document.getElementById('chat-box'); box.innerHTML = '';
-        data.forEach(m => {
-            const div = document.createElement('div'); div.className = `msg ${m.sender_id === u.id ? 'me' : 'other'}`;
-            div.innerText = m.text; box.appendChild(div);
-        });
+
+    // 5. ЧАТ
+    async function openChat(taskId, title) {
+        activeChatId = taskId;
+        document.getElementById('chat-title').innerText = title;
+        document.getElementById('chat-ov').classList.add('open');
+        
+        const box = document.getElementById('chat-msgs');
+        box.innerHTML = '<div style="text-align:center; padding:20px; color:#999">Загрузка переписки...</div>';
+
+        // Загружаем историю
+        const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at');
+        box.innerHTML = '';
+        data.forEach(msg => renderMessage(msg));
         box.scrollTop = box.scrollHeight;
     }
+
+    function closeChat() {
+        document.getElementById('chat-ov').classList.remove('open');
+        activeChatId = null;
+    }
+
+    function handleNewMessage(payload) {
+        if (payload.new.task_id === activeChatId) {
+            renderMessage(payload.new);
+            const box = document.getElementById('chat-msgs');
+            box.scrollTop = box.scrollHeight;
+        }
+    }
+
+    function renderMessage(msg) {
+        const box = document.getElementById('chat-msgs');
+        const div = document.createElement('div');
+        const isMe = msg.sender_id === user.id;
+        div.className = isMe ? 'msg me' : 'msg other';
+        div.innerText = msg.text;
+        box.appendChild(div);
+    }
+
     async function sendMsg() {
-        const inp = document.getElementById('chat-inp'); if(!inp.value) return;
-        await _supabase.from('messages').insert([{ task_id: state.activeChat, sender_id: u.id, text: inp.value }]);
-        inp.value = '';
+        const input = document.getElementById('msg-txt');
+        const text = input.value.trim();
+        if(!text) return;
+        
+        input.value = '';
+        await supabase.from('messages').insert([{
+            task_id: activeChatId,
+            sender_id: user.id,
+            text: text
+        }]);
     }
-    function updateMarkers(tasks) {
-        Object.values(state.markers).forEach(m => state.map.removeLayer(m));
-        tasks.forEach(t => { if(t.status === 'searching') state.markers[t.id] = L.marker([t.lat, t.lon]).addTo(state.map).bindPopup(`<b>${t.title}</b><br>${t.price}₽`); });
+
+    // 6. ПРОФИЛЬ
+    function openProfile() {
+        document.getElementById('profile-ov').classList.add('open');
+        if(user && user.profile) {
+            document.getElementById('p-name').innerText = user.profile.name;
+            document.getElementById('p-role').innerText = user.profile.role === 'client' ? 'Заказчик' : 'Исполнитель';
+        }
     }
-    function openReview(id) { state.revTask = id; setStars(5); openOverlay('ov-review'); }
-    function openOverlay(id) { document.getElementById(id).classList.add('active'); }
-    function closeOverlay() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('active')); state.activeChat = null; }
-    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block'; setTimeout(() => t.style.display='none', 3000); }
+
+    // Запуск
+    initApp();
+
 </script>
 </body>
 </html>
-
