@@ -3,14 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MicroHelp - Карта заказов</title>
+    <title>MicroHelp - Заказы микро-помощи</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ... предыдущие стили остаются без изменений ... */
-        
-        /* Добавим стили для модалок аутентификации */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --primary-light: #818CF8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg-light: #FFFFFF;
+            --bg-dark: #0F172A;
+            --map-bg-light: #F8FAFC;
+            --map-bg-dark: #1E293B;
+        }
+
+        [data-theme="light"] {
+            --bg-color: var(--bg-light);
+            --text-color: #1E293B;
+            --map-bg: var(--map-bg-light);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: var(--bg-dark);
+            --text-color: #F1F5F9;
+            --map-bg: var(--map-bg-dark);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Модалки аутентификации */
         .auth-modal {
             position: fixed;
             top: 0;
@@ -144,7 +181,8 @@
             color: var(--primary);
             border-color: white;
         }
-        
+
+        /* Индикатор загрузки */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -152,7 +190,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.8);
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             z-index: 4000;
@@ -171,11 +209,907 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Основной интерфейс */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Панель сбоку */
+        .side-panel {
+            width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateX(0);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] .side-panel {
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .side-panel.hidden {
+            transform: translateX(-100%);
+        }
+
+        .panel-toggle {
+            position: absolute;
+            right: -50px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+            z-index: 1001;
+            transition: all 0.3s;
+        }
+
+        .panel-toggle:hover {
+            transform: scale(1.1);
+            background: var(--primary-dark);
+        }
+
+        /* Заголовок панели */
+        .panel-header {
+            padding: 30px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(20px, 20px); }
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Переключатель ролей */
+        .role-switcher {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 4px;
+            margin: 20px 30px;
+            display: flex;
+            backdrop-filter: blur(10px);
+        }
+
+        .role-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .role-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Контент панели */
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        /* Список заказов */
+        .orders-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .order-card {
+            background: var(--bg-color);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .order-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .order-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.2);
+        }
+
+        .order-card.active {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .order-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-color);
+            flex: 1;
+        }
+
+        .order-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--success);
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .order-meta {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #64748B;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .order-description {
+            color: var(--text-color);
+            opacity: 0.8;
+            line-height: 1.5;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Карта */
+        .map-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: var(--map-bg);
+            transition: background 0.3s;
+        }
+
+        /* Уникальный стиль для тайлов карты */
+        .custom-tile-layer {
+            filter: saturate(1.2) contrast(1.1) brightness(1.05);
+        }
+
+        [data-theme="dark"] .custom-tile-layer {
+            filter: invert(1) hue-rotate(180deg) saturate(1.5) brightness(0.8) contrast(1.2);
+        }
+
+        /* Кастомные элементы управления картой */
+        .map-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .map-control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: none;
+            color: var(--primary);
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        [data-theme="dark"] .map-control-btn {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        .map-control-btn:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 40px rgba(79, 70, 229, 0.2);
+        }
+
+        .map-control-btn.pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3); }
+            50% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.6); }
+            100% { box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3); }
+        }
+
+        /* Поиск */
+        .search-container {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-width: 90%;
+            z-index: 1000;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 20px 60px 20px 30px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            font-size: 16px;
+            color: var(--text-color);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        [data-theme="dark"] .search-input {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* Уникальные маркеры */
+        .custom-marker {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            transform-origin: center;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-10px) scale(1.05); }
+        }
+
+        .marker-order {
+            background: linear-gradient(135deg, var(--warning) 0%, #F59E0B 100%);
+        }
+
+        .marker-order::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            z-index: -1;
+            animation: pulseRing 2s infinite;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .marker-customer {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .marker-master {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+        }
+
+        /* Информационное окно */
+        .map-info {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+        }
+
+        [data-theme="dark"] .map-info {
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .info-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .info-close:hover {
+            opacity: 1;
+        }
+
+        /* Модалка создания заказа */
+        .order-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .order-modal.active {
+            display: flex;
+        }
+
+        .order-modal-content {
+            background: var(--bg-color);
+            padding: 30px;
+            border-radius: 25px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        [data-theme="dark"] .form-control {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .photo-upload {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .photo-upload:hover {
+            border-color: var(--primary);
+        }
+
+        .photo-upload i {
+            font-size: 40px;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .photo-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Чат */
+        .chat-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+            padding: 20px;
+        }
+
+        .chat-modal.active {
+            display: flex;
+        }
+
+        .chat-container {
+            background: var(--bg-color);
+            border-radius: 25px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message.outgoing {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.incoming {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.5;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+        }
+
+        /* Уведомления */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger);
+            color: white;
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Анимации */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(79, 70, 229, 0.3);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Скелетоны */
+        .skeleton {
+            background: linear-gradient(90deg, 
+                rgba(255, 255, 255, 0.1) 25%, 
+                rgba(255, 255, 255, 0.2) 50%, 
+                rgba(255, 255, 255, 0.1) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 10px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-order {
+            height: 150px;
+        }
+
+        /* Анимированный фон */
+        .animated-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(79, 70, 229, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .side-panel {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .side-panel {
+                width: 100%;
+                height: 60vh;
+                position: absolute;
+                bottom: 0;
+                border-right: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .side-panel.hidden {
+                transform: translateY(100%);
+            }
+            
+            .panel-toggle {
+                right: 20px;
+                top: -60px;
+            }
+            
+            .map-container {
+                height: 40vh;
+            }
+            
+            .search-container {
+                width: 90%;
+                top: 20px;
+            }
+            
+            .map-controls {
+                top: 20px;
+                right: 20px;
+            }
+            
+            .map-control-btn {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .auth-container {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Модалка аутентификации -->
-    <div class="auth-modal" id="authModal">
+    <div class="auth-modal active" id="authModal">
         <div class="auth-container">
             <div class="auth-tabs">
                 <button class="auth-tab active" onclick="switchAuthTab('login')">Вход</button>
@@ -184,8 +1118,8 @@
             
             <!-- Форма входа -->
             <div class="auth-form active" id="loginForm">
-                <input type="email" class="auth-input" id="loginEmail" placeholder="Email">
-                <input type="password" class="auth-input" id="loginPassword" placeholder="Пароль">
+                <input type="email" class="auth-input" id="loginEmail" placeholder="Email" autocomplete="email">
+                <input type="password" class="auth-input" id="loginPassword" placeholder="Пароль" autocomplete="current-password">
                 <button class="auth-btn" onclick="login()">Войти</button>
                 <div class="auth-footer">
                     Нет аккаунта? <span class="auth-switch" onclick="switchAuthTab('register')">Зарегистрируйтесь</span>
@@ -221,22 +1155,214 @@
         <div class="spinner"></div>
     </div>
     
+    <!-- Анимированный фон -->
     <div class="animated-bg"></div>
     
-    <!-- ... остальной HTML код (такой же как в предыдущей версии) ... -->
-    
+    <!-- Основной интерфейс -->
+    <div class="app-container" id="mainInterface" style="display: none;">
+        <!-- Боковая панель -->
+        <div class="side-panel" id="sidePanel">
+            <button class="panel-toggle" onclick="toggleSidePanel()">
+                <i class="fas fa-chevron-left" id="panelToggleIcon"></i>
+            </button>
+            
+            <div class="panel-header">
+                <div class="app-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-hands-helping"></i>
+                    </div>
+                    <div class="logo-text">MicroHelp</div>
+                </div>
+                
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div>
+                        <div style="font-weight: 600;" id="userName">Гость</div>
+                        <div style="font-size: 12px; opacity: 0.8;" id="userRole">Заказчик</div>
+                    </div>
+                    <button class="logout-btn" onclick="logout()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; margin-left: auto;" title="Выйти">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Переключатель ролей -->
+            <div class="role-switcher">
+                <button class="role-btn active" onclick="switchRole('customer')">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Заказчик</span>
+                </button>
+                <button class="role-btn" onclick="switchRole('master')">
+                    <i class="fas fa-tools"></i>
+                    <span>Мастер</span>
+                </button>
+            </div>
+            
+            <!-- Контент панели -->
+            <div class="panel-content">
+                <h2 class="section-title" id="panelTitle">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="titleText">Доступные заказы</span>
+                    <span style="margin-left: auto; font-size: 14px; color: var(--primary);" id="ordersCount">0</span>
+                </h2>
+                
+                <div id="ordersList" class="orders-grid">
+                    <!-- Заказы загружаются здесь -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Основная карта -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Поиск -->
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="addressSearch" 
+                           placeholder="Поиск адреса или места..."
+                           onkeypress="searchKeyPress(event)">
+                    <button class="search-btn" onclick="searchAddress()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Элементы управления картой -->
+            <div class="map-controls">
+                <button class="map-control-btn" onclick="centerMap()" title="Мое местоположение">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
+                <button class="map-control-btn pulse" onclick="openNewOrderModal()" id="newOrderBtn" title="Создать заказ">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="map-control-btn" onclick="toggleTheme()" title="Сменить тему">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <button class="map-control-btn" onclick="openProfileModal()" title="Профиль">
+                    <i class="fas fa-user-cog"></i>
+                </button>
+            </div>
+            
+            <!-- Информационное окно на карте -->
+            <div class="map-info" id="mapInfo">
+                <div class="info-header">
+                    <div class="info-title" id="infoTitle"></div>
+                    <button class="info-close" onclick="closeInfo()">×</button>
+                </div>
+                <div id="infoContent"></div>
+                <div class="order-actions" id="infoActions" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания заказа -->
+    <div class="order-modal" id="newOrderModal">
+        <div class="order-modal-content">
+            <button class="modal-close" onclick="closeNewOrderModal()">×</button>
+            <h2 class="modal-title">Новый заказ</h2>
+            
+            <div class="form-group">
+                <label class="form-label">Название задачи</label>
+                <input type="text" id="orderTitle" class="form-control" placeholder="Что нужно сделать?">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <textarea id="orderDescription" class="form-control" placeholder="Подробно опишите задачу..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Стоимость (руб.)</label>
+                <input type="number" id="orderPrice" class="form-control" placeholder="500" min="100" step="100">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Адрес</label>
+                <input type="text" id="orderAddress" class="form-control" placeholder="Выберите точку на карте или введите адрес">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Фотографии (необязательно)</label>
+                <div class="photo-upload" onclick="document.getElementById('orderPhotos').click()">
+                    <i class="fas fa-camera"></i>
+                    <div>Нажмите для загрузки фотографий</div>
+                    <div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">Можно загрузить несколько файлов</div>
+                </div>
+                <input type="file" id="orderPhotos" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload()">
+                <div class="photo-preview" id="photoPreview"></div>
+            </div>
+            
+            <div class="order-actions">
+                <button class="btn btn-outline" onclick="closeNewOrderModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="createOrder()">Создать заказ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div class="order-modal" id="profileModal">
+        <div class="order-modal-content">
+            <button class="modal-close" onclick="closeProfileModal()">×</button>
+            <h2 class="modal-title">Мой профиль</h2>
+            
+            <div class="form-group">
+                <label class="form-label">Имя</label>
+                <input type="text" id="profileName" class="form-control" placeholder="Ваше имя">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Телефон</label>
+                <input type="tel" id="profilePhone" class="form-control" placeholder="+7 (999) 123-45-67">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <textarea id="profileDescription" class="form-control" placeholder="Расскажите о себе..."></textarea>
+            </div>
+            
+            <div class="order-actions">
+                <button class="btn btn-outline" onclick="closeProfileModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="saveProfile()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно чата -->
+    <div class="chat-modal" id="chatModal">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h3 id="chatTitle">Чат заказа</h3>
+                <button onclick="closeChat()" style="background: none; border: none; color: var(--text-color); font-size: 24px; cursor: pointer;">×</button>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Введите сообщение..." onkeypress="chatKeyPress(event)">
+                <button class="btn btn-primary" onclick="sendChatMessage()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытые элементы -->
+    <input type="file" id="chatPhotoInput" accept="image/*" style="display: none;">
+    <audio id="notificationSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Подключение библиотек -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <script>
-        // Конфигурация Supabase (замените на свои данные)
-        const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NDEzNjAsImV4cCI6MjA4NDExNzM2MH0.lagPVLLopst3yx5eiuJchwOP4wJg49cEqmWZrNWxFrQ';
+        // ===================== КОНФИГУРАЦИЯ =====================
+        const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co'; // Замените на ваш URL
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yaG92bWFieWF3YmZ6Y3h3bWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NDEzNjAsImV4cCI6MjA4NDExNzM2MH0.lagPVLLopst3yx5eiuJchwOP4wJg49cEqmWZrNWxFrQ'; // Замените на ваш anon key
         
         // Инициализация Supabase клиента
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // Состояние приложения
+        // ===================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ =====================
         const state = {
             user: null,
             role: 'customer',
@@ -249,10 +1375,14 @@
             theme: localStorage.getItem('microhelp_theme') || 'light',
             authTab: 'login',
             selectedRegisterRole: 'customer',
-            subscriptions: []
+            subscriptions: [],
+            selectedLocation: null,
+            selectedMarker: null,
+            photos: [],
+            activeChatOrderId: null
         };
 
-        // Инициализация приложения
+        // ===================== ИНИЦИАЛИЗАЦИЯ =====================
         document.addEventListener('DOMContentLoaded', async () => {
             await initApp();
         });
@@ -271,6 +1401,7 @@
                 state.user = session.user;
                 await loadUserProfile();
                 hideAuthModal();
+                showMainInterface();
                 initMap();
                 loadOrders();
                 setupRealtimeSubscriptions();
@@ -284,13 +1415,17 @@
             setupEventListeners();
         }
 
+        // ===================== АУТЕНТИФИКАЦИЯ =====================
         function showAuthModal() {
             document.getElementById('authModal').classList.add('active');
         }
 
         function hideAuthModal() {
             document.getElementById('authModal').classList.remove('active');
-            updateUserInterface();
+        }
+
+        function showMainInterface() {
+            document.getElementById('mainInterface').style.display = 'flex';
         }
 
         function switchAuthTab(tab) {
@@ -365,21 +1500,6 @@
                 
                 if (authError) throw authError;
                 
-                // Создаем профиль в таблице profiles
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert([
-                        {
-                            id: authData.user.id,
-                            email: email,
-                            role: state.selectedRegisterRole,
-                            name: name,
-                            created_at: new Date().toISOString()
-                        }
-                    ]);
-                
-                if (profileError) throw profileError;
-                
                 showToast('Регистрация успешна! Проверьте вашу почту для подтверждения');
                 switchAuthTab('login');
                 
@@ -414,6 +1534,7 @@
                 state.user = data.user;
                 await loadUserProfile();
                 hideAuthModal();
+                showMainInterface();
                 initMap();
                 loadOrders();
                 setupRealtimeSubscriptions();
@@ -440,8 +1561,8 @@
             await supabase.auth.signOut();
             state.user = null;
             
-            // Очищаем карту
-            clearMap();
+            // Скрываем основной интерфейс
+            document.getElementById('mainInterface').style.display = 'none';
             
             // Показываем экран авторизации
             showAuthModal();
@@ -449,6 +1570,7 @@
             showToast('Вы вышли из системы');
         }
 
+        // ===================== ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ =====================
         async function loadUserProfile() {
             if (!state.user) return;
             
@@ -460,11 +1582,11 @@
             
             if (!error && profile) {
                 state.role = profile.role;
-                updateUserInterface();
+                updateUserInterface(profile);
             }
         }
 
-        function updateUserInterface() {
+        function updateUserInterface(profile) {
             if (!state.user) return;
             
             // Обновляем информацию в интерфейсе
@@ -472,7 +1594,7 @@
             const userName = document.getElementById('userName');
             const userRole = document.getElementById('userRole');
             
-            const name = state.user.user_metadata?.name || state.user.email?.split('@')[0] || 'Пользователь';
+            const name = profile?.name || state.user.user_metadata?.name || state.user.email?.split('@')[0] || 'Пользователь';
             const role = state.role === 'customer' ? 'Заказчик' : 'Мастер';
             
             if (userAvatar) userAvatar.textContent = name.charAt(0).toUpperCase();
@@ -492,8 +1614,305 @@
             }
         }
 
-        async function loadOrders() {
+        function openProfileModal() {
+            loadProfileData();
+            document.getElementById('profileModal').classList.add('active');
+        }
+
+        async function loadProfileData() {
+            if (!state.user) return;
+            
+            try {
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', state.user.id)
+                    .single();
+                
+                if (!error && profile) {
+                    document.getElementById('profileName').value = profile.name || '';
+                    document.getElementById('profilePhone').value = profile.phone || '';
+                    document.getElementById('profileDescription').value = profile.description || '';
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        async function saveProfile() {
             showLoading();
+            
+            const name = document.getElementById('profileName').value.trim();
+            const phone = document.getElementById('profilePhone').value.trim();
+            const description = document.getElementById('profileDescription').value.trim();
+            
+            if (!name) {
+                showToast('Имя обязательно для заполнения');
+                hideLoading();
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({
+                        name: name,
+                        phone: phone,
+                        description: description,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', state.user.id);
+                
+                if (error) throw error;
+                
+                showToast('Профиль обновлен');
+                closeProfileModal();
+                await loadUserProfile();
+                
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showToast('Ошибка обновления профиля');
+            }
+            
+            hideLoading();
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+
+        // ===================== КАРТА И ГЕОЛОКАЦИЯ =====================
+        function initMap() {
+            if (state.map) return;
+            
+            // Создаем карту
+            state.map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true,
+                fadeAnimation: true,
+                zoomAnimation: true
+            }).setView([55.7558, 37.6173], 12);
+            
+            // Добавляем кастомный слой карты
+            const customLayer = createCustomTileLayer();
+            customLayer.addTo(state.map);
+            
+            // Добавляем кастомные элементы управления
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(state.map);
+            
+            // Определяем местоположение
+            state.map.locate({setView: true, maxZoom: 14});
+            
+            state.map.on('locationfound', function(e) {
+                state.currentPosition = e.latlng;
+                
+                // Создаем уникальный маркер для местоположения
+                createPulsingMarker(e.latlng, 'Ваше местоположение', 'customer');
+                
+                // Добавляем анимацию
+                createRippleEffect(e.latlng);
+            });
+            
+            state.map.on('click', function(e) {
+                if (state.role === 'customer') {
+                    selectLocation(e.latlng);
+                }
+            });
+            
+            // Исправляем отображение карты
+            setTimeout(() => {
+                if (state.map) {
+                    state.map.invalidateSize();
+                }
+            }, 100);
+        }
+
+        function createCustomTileLayer() {
+            // Используем разные провайдеры для уникального вида
+            let tileUrl;
+            let attribution;
+            
+            if (state.theme === 'dark') {
+                // Темная тема с уникальным стилем
+                tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+                attribution = '© OpenStreetMap, © CartoDB';
+            } else {
+                // Светлая тема с пастельными цветами
+                tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+                attribution = '© OpenStreetMap, © CartoDB';
+            }
+
+            return L.tileLayer(tileUrl, {
+                attribution: attribution,
+                className: 'custom-tile-layer',
+                maxZoom: 19,
+                minZoom: 3
+            });
+        }
+
+        function updateMapStyle() {
+            // Обновляем слой карты при смене темы
+            state.map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    state.map.removeLayer(layer);
+                }
+            });
+            
+            const newLayer = createCustomTileLayer();
+            newLayer.addTo(state.map);
+        }
+
+        function createPulsingMarker(latlng, title, type) {
+            // Создаем пульсирующий маркер
+            const icon = L.divIcon({
+                className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
+                              type === 'master' ? 'marker-master' : 'marker-order'),
+                html: getMarkerIcon(type),
+                iconSize: [60, 60],
+                iconAnchor: [30, 60],
+                popupAnchor: [0, -60]
+            });
+
+            const marker = L.marker(latlng, { icon: icon })
+                .addTo(state.map)
+                .bindPopup(`<b>${title}</b>`);
+
+            // Добавляем эффект при наведении
+            marker.on('mouseover', function() {
+                this.setIcon(L.divIcon({
+                    className: 'custom-marker ' + (type === 'customer' ? 'marker-customer' : 
+                                  type === 'master' ? 'marker-master' : 'marker-order') + ' glow',
+                    html: getMarkerIcon(type),
+                    iconSize: [70, 70],
+                    iconAnchor: [35, 70]
+                }));
+            });
+
+            marker.on('mouseout', function() {
+                this.setIcon(icon);
+            });
+
+            return marker;
+        }
+
+        function getMarkerIcon(type) {
+            const icons = {
+                'customer': '<i class="fas fa-user"></i>',
+                'master': '<i class="fas fa-tools"></i>',
+                'order': '<i class="fas fa-tag"></i>'
+            };
+            return icons[type] || icons.order;
+        }
+
+        function createRippleEffect(latlng) {
+            // Создаем эффект волн при клике
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const ripple = L.circle(latlng, {
+                        radius: 10 + (i * 20),
+                        color: 'transparent',
+                        fillColor: state.theme === 'dark' ? '#4F46E5' : '#818CF8',
+                        fillOpacity: 0.3 - (i * 0.1),
+                        weight: 0
+                    }).addTo(state.map);
+
+                    ripple.setRadius(10 + (i * 20));
+                    
+                    setTimeout(() => {
+                        state.map.removeLayer(ripple);
+                    }, 1000);
+                }, i * 200);
+            }
+        }
+
+        function selectLocation(latlng) {
+            // Удаляем предыдущий маркер выбора
+            if (state.selectedMarker) {
+                state.map.removeLayer(state.selectedMarker);
+            }
+            
+            // Добавляем новый маркер
+            state.selectedMarker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'custom-marker marker-order',
+                    html: '<i class="fas fa-map-marker-alt"></i>',
+                    iconSize: [40, 40]
+                })
+            }).addTo(state.map)
+            .bindPopup('Место выполнения заказа')
+            .openPopup();
+            
+            state.selectedLocation = latlng;
+            
+            // Получаем адрес по координатам
+            reverseGeocode(latlng.lat, latlng.lng);
+        }
+
+        async function reverseGeocode(lat, lng) {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+                );
+                const data = await response.json();
+                
+                if (data.display_name) {
+                    document.getElementById('orderAddress').value = data.display_name;
+                }
+            } catch (error) {
+                console.error('Geocoding error:', error);
+                document.getElementById('orderAddress').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            }
+        }
+
+        async function searchAddress() {
+            const query = document.getElementById('addressSearch').value;
+            if (!query) return;
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+                );
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    const result = data[0];
+                    const latlng = [parseFloat(result.lat), parseFloat(result.lon)];
+                    
+                    // Центрируем карту
+                    state.map.setView(latlng, 16);
+                    
+                    // Выбираем это местоположение
+                    selectLocation(L.latLng(latlng));
+                    
+                    showToast("Адрес найден");
+                } else {
+                    showToast("Адрес не найден");
+                }
+            } catch (error) {
+                showToast("Ошибка при поиске адреса");
+            }
+        }
+
+        function searchKeyPress(e) {
+            if (e.key === 'Enter') {
+                searchAddress();
+            }
+        }
+
+        function centerMap() {
+            if (state.currentPosition) {
+                state.map.setView(state.currentPosition, 14);
+            } else {
+                state.map.locate({setView: true, maxZoom: 14});
+            }
+        }
+
+        // ===================== ЗАКАЗЫ =====================
+        async function loadOrders() {
+            showSkeletons();
             
             try {
                 let query = supabase
@@ -523,121 +1942,249 @@
             } catch (error) {
                 console.error('Error loading orders:', error);
                 showToast('Ошибка загрузки заказов');
+                state.orders = getTestOrders();
+                updateOrdersList();
+                updateMapMarkers();
             }
-            
-            hideLoading();
         }
 
-        function setupRealtimeSubscriptions() {
-            // Отписываемся от старых подписок
-            state.subscriptions.forEach(sub => sub.unsubscribe());
-            state.subscriptions = [];
+        function getTestOrders() {
+            return [
+                {
+                    id: 'test-1',
+                    title: "Доставить документы",
+                    description: "Срочная доставка документов в центр города",
+                    price: 1500,
+                    location: { lat: 55.7558, lng: 37.6173 },
+                    address: "Москва, Красная площадь",
+                    status: "new",
+                    customer: { name: "Иван Иванов" },
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 'test-2',
+                    title: "Купить продукты",
+                    description: "Молоко, хлеб, яйца, сыр, фрукты. Магазин у дома.",
+                    price: 800,
+                    location: { lat: 55.7358, lng: 37.6273 },
+                    address: "Москва, Арбат",
+                    status: "new",
+                    customer: { name: "Алексей Петров" },
+                    created_at: new Date().toISOString()
+                }
+            ];
+        }
+
+        function showSkeletons() {
+            const container = document.getElementById('ordersList');
+            container.innerHTML = '';
             
-            // Подписка на новые заказы (для мастера)
-            if (state.role === 'master') {
-                const ordersSubscription = supabase
-                    .channel('orders-channel')
-                    .on('postgres_changes', 
-                        { event: 'INSERT', schema: 'public', table: 'orders' },
-                        async (payload) => {
-                            // Загружаем полные данные нового заказа
-                            const { data: order, error } = await supabase
-                                .from('orders')
-                                .select(`
-                                    *,
-                                    customer:profiles!orders_customer_id_fkey(name, rating)
-                                `)
-                                .eq('id', payload.new.id)
-                                .single();
-                            
-                            if (!error && order && order.status === 'new') {
-                                state.orders.unshift(order);
-                                updateOrdersList();
-                                addOrderMarker(order);
-                                playNotificationSound();
-                                showToast('Появился новый заказ!');
-                            }
-                        }
-                    )
-                    .subscribe();
+            for (let i = 0; i < 3; i++) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'order-card skeleton skeleton-order';
+                container.appendChild(skeleton);
+            }
+        }
+
+        function updateOrdersList() {
+            const container = document.getElementById('ordersList');
+            const filteredOrders = state.orders.filter(order => 
+                state.role === 'customer' || order.status === 'new'
+            );
+            
+            document.getElementById('ordersCount').textContent = filteredOrders.length;
+            
+            container.innerHTML = '';
+            
+            if (filteredOrders.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'order-card';
+                empty.style.textAlign = 'center';
+                empty.style.padding = '40px 20px';
+                empty.innerHTML = `
+                    <i class="fas fa-inbox" style="font-size: 40px; opacity: 0.5; margin-bottom: 15px;"></i>
+                    <div style="font-size: 16px; opacity: 0.7;">${state.role === 'customer' ? 'У вас пока нет заказов' : 'Нет доступных заказов'}</div>
+                `;
+                container.appendChild(empty);
+                return;
+            }
+            
+            filteredOrders.forEach(order => {
+                const orderCard = createOrderCard(order);
+                container.appendChild(orderCard);
+            });
+            
+            setupSwipeGestures();
+        }
+
+        function createOrderCard(order) {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+            card.dataset.orderId = order.id;
+            
+            // Определяем статус
+            let statusText = '';
+            let statusClass = '';
+            switch(order.status) {
+                case 'new':
+                    statusText = 'Новый';
+                    statusClass = 'status-new';
+                    break;
+                case 'active':
+                    statusText = 'В работе';
+                    statusClass = 'status-active';
+                    break;
+                case 'completed':
+                    statusText = 'Завершен';
+                    statusClass = 'status-completed';
+                    break;
+            }
+            
+            // Форматируем дату
+            const date = new Date(order.created_at);
+            const dateStr = `${date.getDate()}.${date.getMonth()+1} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+            
+            card.innerHTML = `
+                <div class="order-header">
+                    <div class="order-title">${order.title}</div>
+                    <div class="order-price">${order.price} ₽</div>
+                </div>
+                <div class="order-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${order.address.split(',')[0]}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>${dateStr}</span>
+                    </div>
+                </div>
+                <div class="order-description">${order.description}</div>
+                <div class="order-actions">
+                    <button class="btn btn-primary" onclick="viewOrderDetails('${order.id}')">
+                        <i class="fas fa-info-circle"></i> Подробнее
+                    </button>
+                    ${state.role === 'master' && order.status === 'new' ? `
+                    <button class="btn btn-success" onclick="takeOrder('${order.id}')">
+                        <i class="fas fa-check"></i> Взять
+                    </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function updateMapMarkers() {
+            // Очищаем старые маркеры
+            state.markers.forEach(marker => {
+                state.map.removeLayer(marker);
+            });
+            state.markers.clear();
+            
+            // Добавляем новые маркеры
+            state.orders.forEach(order => {
+                if (order.location) {
+                    const marker = createPulsingMarker(
+                        order.location,
+                        order.title,
+                        'order'
+                    );
+                    
+                    marker.on('click', () => {
+                        viewOrderDetails(order.id);
+                    });
+                    
+                    state.markers.set(order.id, marker);
+                }
+            });
+        }
+
+        // ===================== СОЗДАНИЕ ЗАКАЗА =====================
+        function openNewOrderModal() {
+            document.getElementById('newOrderModal').classList.add('active');
+            
+            // Очищаем форму
+            document.getElementById('orderTitle').value = '';
+            document.getElementById('orderDescription').value = '';
+            document.getElementById('orderPrice').value = '';
+            document.getElementById('orderAddress').value = '';
+            document.getElementById('photoPreview').innerHTML = '';
+            state.photos = [];
+            
+            // Если есть выбранное место, обновляем адрес
+            if (state.selectedMarker) {
+                const latlng = state.selectedMarker.getLatLng();
+                reverseGeocode(latlng.lat, latlng.lng);
+            }
+        }
+
+        function closeNewOrderModal() {
+            document.getElementById('newOrderModal').classList.remove('active');
+        }
+
+        function handlePhotoUpload() {
+            const files = document.getElementById('orderPhotos').files;
+            const preview = document.getElementById('photoPreview');
+            
+            for (let file of files) {
+                const reader = new FileReader();
                 
-                state.subscriptions.push(ordersSubscription);
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    
+                    previewItem.innerHTML = `
+                        <img src="${e.target.result}" class="preview-img">
+                        <button class="preview-remove" onclick="removePhoto(this)">×</button>
+                    `;
+                    
+                    preview.appendChild(previewItem);
+                    
+                    // Сохраняем фото в состояние
+                    state.photos.push({
+                        file: file,
+                        url: e.target.result
+                    });
+                };
+                
+                reader.readAsDataURL(file);
             }
-            
-            // Подписка на обновления заказов (для всех)
-            const ordersUpdateSubscription = supabase
-                .channel('orders-update-channel')
-                .on('postgres_changes', 
-                    { event: 'UPDATE', schema: 'public', table: 'orders' },
-                    async (payload) => {
-                        const orderIndex = state.orders.findIndex(o => o.id === payload.new.id);
-                        
-                        if (orderIndex !== -1) {
-                            // Загружаем обновленные данные
-                            const { data: order, error } = await supabase
-                                .from('orders')
-                                .select(`
-                                    *,
-                                    customer:profiles!orders_customer_id_fkey(name, rating),
-                                    master:profiles!orders_master_id_fkey(name, rating)
-                                `)
-                                .eq('id', payload.new.id)
-                                .single();
-                            
-                            if (!error && order) {
-                                state.orders[orderIndex] = order;
-                                updateOrdersList();
-                                updateOrderMarker(order);
-                                
-                                // Если заказ был принят текущим пользователем
-                                if (payload.new.status === 'active' && 
-                                    payload.new.master_id === state.user.id) {
-                                    showToast('Вы приняли заказ в работу!');
-                                }
-                            }
-                        }
-                    }
-                )
-                .subscribe();
-            
-            state.subscriptions.push(ordersUpdateSubscription);
-            
-            // Подписка на новые сообщения в чате
-            const messagesSubscription = supabase
-                .channel('messages-channel')
-                .on('postgres_changes', 
-                    { event: 'INSERT', schema: 'public', table: 'messages' },
-                    async (payload) => {
-                        // Если чат открыт для этого заказа
-                        if (state.activeChatOrderId === payload.new.order_id) {
-                            loadChatMessages(state.activeChatOrderId);
-                            playNotificationSound();
-                        }
-                    }
-                )
-                .subscribe();
-            
-            state.subscriptions.push(messagesSubscription);
         }
 
-        // Функции для работы с заказами
+        function removePhoto(button) {
+            const previewItem = button.parentElement;
+            const index = Array.from(previewItem.parentElement.children).indexOf(previewItem);
+            
+            // Удаляем из состояния
+            state.photos.splice(index, 1);
+            
+            // Удаляем из DOM
+            previewItem.remove();
+        }
+
         async function createOrder() {
             showLoading();
+            
+            if (!state.selectedLocation) {
+                showToast("Выберите место на карте");
+                hideLoading();
+                return;
+            }
             
             const title = document.getElementById('orderTitle').value;
             const description = document.getElementById('orderDescription').value;
             const price = parseInt(document.getElementById('orderPrice').value);
             const address = document.getElementById('orderAddress').value;
             
-            // Валидация
-            if (!title || !description || !price || !address || !state.selectedLocation) {
-                showToast('Заполните все поля и выберите местоположение на карте');
+            if (!title || !description || !price || !address) {
+                showToast("Заполните все обязательные поля");
                 hideLoading();
                 return;
             }
             
             if (price < 100) {
-                showToast('Минимальная стоимость заказа - 100 руб.');
+                showToast("Минимальная стоимость заказа - 100 руб.");
                 hideLoading();
                 return;
             }
@@ -679,6 +2226,23 @@
             hideLoading();
         }
 
+        function addOrderMarker(order) {
+            if (order.location) {
+                const marker = createPulsingMarker(
+                    order.location,
+                    order.title,
+                    'order'
+                );
+                
+                marker.on('click', () => {
+                    viewOrderDetails(order.id);
+                });
+                
+                state.markers.set(order.id, marker);
+            }
+        }
+
+        // ===================== РАБОТА С ЗАКАЗАМИ =====================
         async function takeOrder(orderId) {
             showLoading();
             
@@ -699,6 +2263,7 @@
                 
                 showToast('Заказ принят в работу!');
                 loadOrders(); // Перезагружаем список заказов
+                closeInfo();
                 
             } catch (error) {
                 console.error('Error taking order:', error);
@@ -727,6 +2292,7 @@
                 
                 showToast('Заказ завершен!');
                 loadOrders();
+                closeInfo();
                 
             } catch (error) {
                 console.error('Error completing order:', error);
@@ -736,7 +2302,98 @@
             hideLoading();
         }
 
-        // Функции для работы с чатом
+        function viewOrderDetails(orderId) {
+            const order = state.orders.find(o => o.id === orderId);
+            if (!order) return;
+            
+            state.selectedOrder = order;
+            
+            document.getElementById('infoTitle').textContent = order.title;
+            
+            // Заполняем контент
+            const content = document.getElementById('infoContent');
+            content.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 28px; font-weight: bold; color: var(--success); margin-bottom: 10px;">
+                        ${order.price} ₽
+                    </div>
+                    <div style="color: #64748B; margin-bottom: 5px;">
+                        <i class="fas fa-map-marker-alt"></i> ${order.address}
+                    </div>
+                    <div style="color: #64748B;">
+                        <i class="fas fa-clock"></i> ${new Date(order.created_at).toLocaleString()}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Описание:</div>
+                    <div>${order.description}</div>
+                </div>
+                
+                ${state.role === 'customer' ? `
+                <div style="margin-bottom: 20px;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Статус:</div>
+                    <div class="status-badge ${order.status === 'new' ? 'status-new' : order.status === 'active' ? 'status-active' : 'status-completed'}">
+                        ${order.status === 'new' ? 'Новый' : order.status === 'active' ? 'В работе' : 'Завершен'}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+            
+            // Настраиваем кнопки действий
+            const actions = document.getElementById('infoActions');
+            actions.innerHTML = '';
+            
+            if (state.role === 'master' && order.status === 'new') {
+                actions.innerHTML = `
+                    <button class="btn btn-outline" onclick="closeInfo()">Отмена</button>
+                    <button class="btn btn-success" onclick="takeOrder('${order.id}')">
+                        <i class="fas fa-check"></i> Взять заказ
+                    </button>
+                `;
+            } else if (state.role === 'master' && order.status === 'active' && order.master_id === state.user.id) {
+                actions.innerHTML = `
+                    <button class="btn btn-outline" onclick="openChat('${order.id}')">
+                        <i class="fas fa-comments"></i> Чат
+                    </button>
+                    <button class="btn btn-success" onclick="completeOrder('${order.id}')">
+                        <i class="fas fa-check-circle"></i> Завершить
+                    </button>
+                `;
+            } else if (state.role === 'customer' && (order.status === 'active' || order.status === 'new')) {
+                actions.innerHTML = `
+                    <button class="btn btn-outline" onclick="openChat('${order.id}')">
+                        <i class="fas fa-comments"></i> Чат
+                    </button>
+                    <button class="btn btn-primary" onclick="closeInfo()">Закрыть</button>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <button class="btn btn-primary" onclick="closeInfo()" style="width: 100%;">Закрыть</button>
+                `;
+            }
+            
+            document.getElementById('mapInfo').style.display = 'block';
+            
+            // Центрируем карту на этом заказе
+            if (order.location) {
+                state.map.setView([order.location.lat, order.location.lng], 16);
+            }
+        }
+
+        function closeInfo() {
+            document.getElementById('mapInfo').style.display = 'none';
+            state.selectedOrder = null;
+        }
+
+        // ===================== ЧАТ =====================
+        function openChat(orderId) {
+            state.activeChatOrderId = orderId;
+            document.getElementById('chatModal').classList.add('active');
+            document.getElementById('chatTitle').textContent = `Чат заказа #${orderId.substring(0, 8)}`;
+            loadChatMessages(orderId);
+        }
+
         async function loadChatMessages(orderId) {
             try {
                 const { data: messages, error } = await supabase
@@ -752,38 +2409,56 @@
                 
                 displayChatMessages(messages || []);
                 
-                // Помечаем сообщения как прочитанные
-                await supabase
-                    .from('messages')
-                    .update({ read: true })
-                    .eq('order_id', orderId)
-                    .eq('read', false)
-                    .neq('sender_id', state.user.id);
-                    
             } catch (error) {
-                console.error('Error loading messages:', error);
+                console.error('Error loading chat messages:', error);
             }
         }
 
-        async function sendMessage(orderId, message) {
-            if (!message.trim()) return;
+        function displayChatMessages(messages) {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.sender_id === state.user.id ? 'outgoing' : 'incoming'}`;
+                
+                messageDiv.innerHTML = `
+                    <div class="message-sender">${message.sender.name}</div>
+                    <div class="message-content">${message.message}</div>
+                    <div class="message-time">${new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                `;
+                
+                chatMessages.appendChild(messageDiv);
+            });
+            
+            // Прокручиваем вниз
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendChatMessage() {
+            if (!state.activeChatOrderId) return;
+            
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
             
             try {
                 const { error } = await supabase
                     .from('messages')
                     .insert([
                         {
-                            order_id: orderId,
+                            order_id: state.activeChatOrderId,
                             sender_id: state.user.id,
-                            message: message.trim(),
+                            message: message,
                             created_at: new Date().toISOString()
                         }
                     ]);
                 
                 if (error) throw error;
                 
-                // Очищаем поле ввода
-                document.getElementById('chatInput').value = '';
+                input.value = '';
+                loadChatMessages(state.activeChatOrderId);
                 
             } catch (error) {
                 console.error('Error sending message:', error);
@@ -791,26 +2466,159 @@
             }
         }
 
-        // Функции для работы с профилем
-        async function updateProfile(data) {
-            try {
-                const { error } = await supabase
-                    .from('profiles')
-                    .update(data)
-                    .eq('id', state.user.id);
-                
-                if (error) throw error;
-                
-                showToast('Профиль обновлен');
-                await loadUserProfile();
-                
-            } catch (error) {
-                console.error('Error updating profile:', error);
-                showToast('Ошибка обновления профиля');
+        function chatKeyPress(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
             }
         }
 
-        // Вспомогательные функции
+        function closeChat() {
+            document.getElementById('chatModal').classList.remove('active');
+            state.activeChatOrderId = null;
+        }
+
+        // ===================== REALTIME ПОДПИСКИ =====================
+        function setupRealtimeSubscriptions() {
+            // Отписываемся от старых подписок
+            state.subscriptions.forEach(sub => sub.unsubscribe());
+            state.subscriptions = [];
+            
+            // Подписка на новые заказы (для мастера)
+            if (state.role === 'master') {
+                const ordersSubscription = supabase
+                    .channel('orders-channel')
+                    .on('postgres_changes', 
+                        { event: 'INSERT', schema: 'public', table: 'orders' },
+                        async (payload) => {
+                            const { data: order, error } = await supabase
+                                .from('orders')
+                                .select(`
+                                    *,
+                                    customer:profiles!orders_customer_id_fkey(name, rating)
+                                `)
+                                .eq('id', payload.new.id)
+                                .single();
+                            
+                            if (!error && order && order.status === 'new') {
+                                state.orders.unshift(order);
+                                updateOrdersList();
+                                addOrderMarker(order);
+                                playNotificationSound();
+                                showToast('Появился новый заказ!');
+                            }
+                        }
+                    )
+                    .subscribe();
+                
+                state.subscriptions.push(ordersSubscription);
+            }
+            
+            // Подписка на обновления заказов
+            const ordersUpdateSubscription = supabase
+                .channel('orders-update-channel')
+                .on('postgres_changes', 
+                    { event: 'UPDATE', schema: 'public', table: 'orders' },
+                    async (payload) => {
+                        const orderIndex = state.orders.findIndex(o => o.id === payload.new.id);
+                        
+                        if (orderIndex !== -1) {
+                            const { data: order, error } = await supabase
+                                .from('orders')
+                                .select(`
+                                    *,
+                                    customer:profiles!orders_customer_id_fkey(name, rating),
+                                    master:profiles!orders_master_id_fkey(name, rating)
+                                `)
+                                .eq('id', payload.new.id)
+                                .single();
+                            
+                            if (!error && order) {
+                                state.orders[orderIndex] = order;
+                                updateOrdersList();
+                                
+                                if (payload.new.status === 'active' && 
+                                    payload.new.master_id === state.user.id) {
+                                    showToast('Вы приняли заказ в работу!');
+                                }
+                            }
+                        }
+                    }
+                )
+                .subscribe();
+            
+            state.subscriptions.push(ordersUpdateSubscription);
+            
+            // Подписка на сообщения
+            const messagesSubscription = supabase
+                .channel('messages-channel')
+                .on('postgres_changes', 
+                    { event: 'INSERT', schema: 'public', table: 'messages' },
+                    async (payload) => {
+                        if (state.activeChatOrderId === payload.new.order_id) {
+                            loadChatMessages(state.activeChatOrderId);
+                            playNotificationSound();
+                        }
+                    }
+                )
+                .subscribe();
+            
+            state.subscriptions.push(messagesSubscription);
+        }
+
+        // ===================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====================
+        function toggleSidePanel() {
+            const panel = document.getElementById('sidePanel');
+            const icon = document.getElementById('panelToggleIcon');
+            
+            state.sidePanelOpen = !state.sidePanelOpen;
+            panel.classList.toggle('hidden');
+            
+            icon.className = state.sidePanelOpen ? 
+                'fas fa-chevron-left' : 'fas fa-chevron-right';
+        }
+
+        function switchRole(role) {
+            state.role = role;
+            
+            // Обновляем кнопки
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Обновляем интерфейс
+            document.getElementById('userRole').textContent = 
+                role === 'customer' ? 'Заказчик' : 'Мастер';
+            document.getElementById('titleText').textContent = 
+                role === 'customer' ? 'Мои заказы' : 'Доступные заказы';
+            
+            // Обновляем заказы
+            loadOrders();
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('microhelp_theme', state.theme);
+            loadTheme();
+            updateMapStyle();
+        }
+
+        function loadTheme() {
+            document.documentElement.setAttribute('data-theme', state.theme);
+            const icon = state.theme === 'light' ? 'fa-moon' : 'fa-sun';
+            document.getElementById('themeIcon').className = `fas ${icon}`;
+        }
+
+        function playNotificationSound() {
+            try {
+                const audio = document.getElementById('notificationSound');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Audio play failed:", e));
+            } catch (e) {
+                console.log("Audio error:", e);
+            }
+        }
+
         function showLoading() {
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
@@ -832,25 +2640,81 @@
             }).showToast();
         }
 
-        // Инициализация карты (остается без изменений)
-        function initMap() {
-            // ... код инициализации карты (такой же как в предыдущей версии) ...
+        function setupEventListeners() {
+            // Анимация при загрузке
+            setTimeout(() => {
+                document.querySelectorAll('.order-card').forEach((card, i) => {
+                    setTimeout(() => {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        card.offsetHeight; // Trigger reflow
+                        card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, i * 100);
+                });
+            }, 300);
         }
 
-        // Остальные функции (для карты, интерфейса и т.д.) остаются без изменений
-        // ... (весь остальной код из предыдущей версии) ...
-        
-        // Экспорт функций для глобального использования
+        function setupSwipeGestures() {
+            // Реализация свайпов для карточек заказов
+            document.querySelectorAll('.order-card').forEach(card => {
+                let startX = 0;
+                let currentX = 0;
+                
+                card.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                }, { passive: true });
+                
+                card.addEventListener('touchmove', (e) => {
+                    currentX = e.touches[0].clientX - startX;
+                    card.style.transform = `translateX(${currentX}px)`;
+                }, { passive: true });
+                
+                card.addEventListener('touchend', () => {
+                    if (Math.abs(currentX) > 100) {
+                        const orderId = card.dataset.orderId;
+                        if (currentX > 0 && state.role === 'master') {
+                            // Свайп вправо - взять заказ
+                            takeOrder(orderId);
+                        } else if (currentX < 0) {
+                            // Свайп влево - просмотреть детали
+                            viewOrderDetails(orderId);
+                        }
+                    }
+                    card.style.transform = 'translateX(0)';
+                });
+            });
+        }
+
+        // ===================== ЭКСПОРТ ФУНКЦИЙ ДЛЯ ГЛОБАЛЬНОГО ИСПОЛЬЗОВАНИЯ =====================
         window.switchAuthTab = switchAuthTab;
         window.selectRole = selectRole;
         window.login = login;
         window.register = register;
         window.logout = logout;
+        window.toggleSidePanel = toggleSidePanel;
+        window.switchRole = switchRole;
+        window.centerMap = centerMap;
+        window.searchAddress = searchAddress;
+        window.searchKeyPress = searchKeyPress;
+        window.openNewOrderModal = openNewOrderModal;
+        window.closeNewOrderModal = closeNewOrderModal;
+        window.handlePhotoUpload = handlePhotoUpload;
+        window.removePhoto = removePhoto;
         window.createOrder = createOrder;
+        window.viewOrderDetails = viewOrderDetails;
+        window.closeInfo = closeInfo;
         window.takeOrder = takeOrder;
         window.completeOrder = completeOrder;
-        window.sendMessage = sendMessage;
-        // ... остальные экспорты ...
+        window.openChat = openChat;
+        window.closeChat = closeChat;
+        window.sendChatMessage = sendChatMessage;
+        window.chatKeyPress = chatKeyPress;
+        window.toggleTheme = toggleTheme;
+        window.openProfileModal = openProfileModal;
+        window.closeProfileModal = closeProfileModal;
+        window.saveProfile = saveProfile;
     </script>
 </body>
 </html>
