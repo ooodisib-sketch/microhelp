@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #007AFF;
@@ -704,9 +705,9 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Конфигурация Supabase (замените на свои значения)
-        const SUPABASE_URL = 'https://your-project.supabase.co';
-        const SUPABASE_ANON_KEY = 'your-anon-key';
+        // Конфигурация Supabase с вашими ключами
+        const SUPABASE_URL = 'https://mrhovmabyawbfzcxwmib.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_b2kTzbpSmcWVrpPUPFng7Q_enwqQd8u';
         
         // Инициализация приложения
         let map = null;
@@ -718,6 +719,7 @@
         let selectedLocation = null;
         let chatSubscription = null;
         let currentChatTaskId = null;
+        let supabase = null;
         
         // Инициализация карты
         function initMap() {
@@ -771,7 +773,7 @@
         // Инициализация Supabase
         function initSupabase() {
             // Инициализация Supabase клиента
-            window.supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             
             // Проверка сессии
             checkSession();
@@ -799,6 +801,30 @@
                 
             if (data) {
                 userRole = data.role;
+                updateUIForRole();
+                loadTasks();
+            } else if (error && error.code === 'PGRST116') {
+                // Профиль не найден, создаем новый
+                await createUserProfile();
+            }
+        }
+        
+        // Создание профиля пользователя
+        async function createUserProfile() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .insert([
+                    {
+                        id: user.id,
+                        email: user.email,
+                        role: 'customer',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }
+                ]);
+                
+            if (!error) {
+                userRole = 'customer';
                 updateUIForRole();
                 loadTasks();
             }
@@ -936,8 +962,14 @@
             
             // Если задание завершено и отзыв еще не оставлен
             if (task.status === 'completed') {
-                const hasReview = task.reviews && task.reviews.some(r => r.user_id === user.id);
-                if (!hasReview) {
+                // Проверяем, оставлял ли пользователь уже отзыв
+                const { data: reviews } = await supabase
+                    .from('reviews')
+                    .select('id')
+                    .eq('task_id', task.id)
+                    .eq('reviewer_id', user.id);
+                    
+                if (!reviews || reviews.length === 0) {
                     container.innerHTML += `
                         <button class="btn btn-primary" onclick="showRatingModal('${task.id}')">⭐ Оставить отзыв</button>
                     `;
@@ -1031,7 +1063,8 @@
                             id: data.user.id,
                             email: email,
                             role: role,
-                            created_at: new Date().toISOString()
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
                         }
                     ]);
                     
@@ -1039,6 +1072,8 @@
                     alert('Ошибка создания профиля: ' + profileError.message);
                 } else {
                     alert('Регистрация успешна! Проверьте email для подтверждения.');
+                    document.getElementById('authEmail').value = '';
+                    document.getElementById('authPassword').value = '';
                     showAuthModal();
                 }
             }
@@ -1080,6 +1115,12 @@
             } else {
                 alert('Задание создано успешно!');
                 document.getElementById('createTaskModal').classList.remove('active');
+                // Сброс формы
+                document.getElementById('taskTitle').value = '';
+                document.getElementById('taskDescription').value = '';
+                document.getElementById('taskBudget').value = '';
+                document.getElementById('taskAddress').value = '';
+                selectedLocation = null;
                 loadTasks();
             }
         }
@@ -1112,7 +1153,6 @@
             
             // Определяем собеседника
             const otherUserId = userRole === 'customer' ? task.master_id : task.customer_id;
-            const otherUser = await getUserProfile(otherUserId);
             
             document.getElementById('chatTitle').textContent = `Чат: ${task.title}`;
             document.getElementById('chatModal').classList.add('active');
@@ -1222,12 +1262,25 @@
         }
         
         // Показать модалку рейтинга
-        function showRatingModal(taskId) {
+        async function showRatingModal(taskId) {
             currentTask = tasks.find(t => t.id === taskId);
             if (!currentTask) return;
             
+            // Проверяем, оставлял ли пользователь уже отзыв
+            const { data: reviews } = await supabase
+                .from('reviews')
+                .select('id')
+                .eq('task_id', taskId)
+                .eq('reviewer_id', user.id);
+                
+            if (reviews && reviews.length > 0) {
+                alert('Вы уже оставили отзыв на это задание.');
+                return;
+            }
+            
             // Сброс рейтинга
             document.getElementById('selectedRating').value = '5';
+            document.getElementById('ratingComment').value = '';
             const stars = document.querySelectorAll('.rating-star');
             stars.forEach((star, index) => {
                 star.textContent = index < 5 ? '★' : '☆';
@@ -1243,10 +1296,18 @@
             
             if (!currentTask) return;
             
+            // Определяем, кому оставляем отзыв
+            const revieweeId = userRole === 'customer' ? currentTask.master_id : currentTask.customer_id;
+            
+            if (!revieweeId) {
+                alert('Не удалось определить пользователя для отзыва');
+                return;
+            }
+            
             const reviewData = {
                 task_id: currentTask.id,
                 reviewer_id: user.id,
-                reviewee_id: userRole === 'customer' ? currentTask.master_id : currentTask.customer_id,
+                reviewee_id: revieweeId,
                 rating: rating,
                 comment: comment,
                 created_at: new Date().toISOString()
@@ -1271,6 +1332,7 @@
             user = null;
             userRole = null;
             showAuthModal();
+            document.getElementById('profileModal').classList.remove('active');
         }
         
         // Получить профиль пользователя
@@ -1288,12 +1350,14 @@
         async function updateProfile() {
             const phone = document.getElementById('profilePhone').value;
             const bio = document.getElementById('profileBio').value;
+            const fullName = document.getElementById('profileName').textContent;
             
             const { error } = await supabase
                 .from('profiles')
                 .update({
                     phone: phone,
                     bio: bio,
+                    full_name: fullName,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', user.id);
@@ -1317,31 +1381,45 @@
         
         function editTask(taskId) {
             alert('Редактирование задания ' + taskId);
+            // В реальном приложении здесь будет открытие формы редактирования
         }
         
-        function cancelTask(taskId) {
+        async function cancelTask(taskId) {
             if (confirm('Вы уверены, что хотите отменить задание?')) {
-                supabase
+                const { error } = await supabase
                     .from('tasks')
                     .update({ status: 'cancelled' })
-                    .eq('id', taskId)
-                    .then(() => {
-                        alert('Задание отменено');
-                        loadTasks();
-                    });
+                    .eq('id', taskId);
+                    
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                } else {
+                    alert('Задание отменено');
+                    loadTasks();
+                }
             }
         }
         
-        function markAsCompleted(taskId) {
+        async function markAsCompleted(taskId) {
             if (confirm('Отметить задание как выполненное?')) {
-                supabase
+                const { error } = await supabase
                     .from('tasks')
                     .update({ status: 'completed' })
-                    .eq('id', taskId)
-                    .then(() => {
-                        alert('Задание отмечено как выполненное');
-                        loadTasks();
-                    });
+                    .eq('id', taskId);
+                    
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                } else {
+                    alert('Задание отмечено как выполненное');
+                    loadTasks();
+                }
+            }
+        }
+        
+        function viewTaskDetails(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                alert(`Подробности задания:\n\nНазвание: ${task.title}\nОписание: ${task.description}\nБюджет: ${task.budget}₽\nАдрес: ${task.address || 'Не указан'}`);
             }
         }
         
@@ -1363,30 +1441,37 @@
             document.getElementById('btnCreateTask').addEventListener('click', function() {
                 if (userRole === 'customer') {
                     document.getElementById('createTaskModal').classList.add('active');
+                } else {
+                    alert('Только заказчики могут создавать задания');
                 }
             });
             
             document.getElementById('btnSubmitTask').addEventListener('click', createTask);
-            document.getElementById('btnProfile').addEventListener('click', function() {
+            document.getElementById('btnProfile').addEventListener('click', async function() {
+                if (!user) {
+                    showAuthModal();
+                    return;
+                }
+                
                 // Загрузка данных профиля
-                supabase
+                const { data } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
-                    .single()
-                    .then(({data}) => {
-                        if (data) {
-                            document.getElementById('profileName').textContent = data.full_name || 'Пользователь';
-                            document.getElementById('profileEmail').textContent = data.email || '';
-                            document.getElementById('profilePhone').value = data.phone || '';
-                            document.getElementById('profileBio').value = data.bio || '';
-                            document.getElementById('profileRole').textContent = data.role === 'customer' ? '(Заказчик)' : '(Мастер)';
-                            document.getElementById('profileAvatar').textContent = data.role === 'customer' ? '👤' : '👨‍🔧';
-                            
-                            // Загрузка статистики
-                            loadUserStats();
-                        }
-                    });
+                    .single();
+                    
+                if (data) {
+                    document.getElementById('profileName').textContent = data.full_name || data.email || 'Пользователь';
+                    document.getElementById('profileEmail').textContent = data.email || '';
+                    document.getElementById('profilePhone').value = data.phone || '';
+                    document.getElementById('profileBio').value = data.bio || '';
+                    document.getElementById('profileRole').textContent = data.role === 'customer' ? '(Заказчик)' : '(Мастер)';
+                    document.getElementById('profileRating').textContent = data.rating || '0.0';
+                    document.getElementById('profileAvatar').textContent = data.role === 'customer' ? '👤' : '👨‍🔧';
+                    
+                    // Загрузка статистики
+                    loadUserStats();
+                }
                     
                 document.getElementById('profileModal').classList.add('active');
             });
@@ -1489,10 +1574,45 @@
                 document.removeEventListener('touchend', stopDrag);
                 document.removeEventListener('mouseup', stopDrag);
             }
+            
+            // Автозаполнение адреса при клике на карту
+            map.on('click', function(e) {
+                if (userRole === 'customer') {
+                    selectedLocation = e.latlng;
+                    
+                    // Удаляем предыдущие маркеры выбора
+                    markers.forEach(marker => {
+                        if (marker.options.icon.options.html === '📍') {
+                            map.removeLayer(marker);
+                        }
+                    });
+                    
+                    L.marker(selectedLocation, {
+                        icon: L.divIcon({
+                            className: 'leaflet-marker-icon marker-customer',
+                            html: '📍',
+                            iconSize: [40, 40]
+                        })
+                    }).addTo(map);
+                    
+                    // Получение адреса
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLocation.lat}&lon=${selectedLocation.lng}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const address = data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : 'Выбранное место на карте';
+                            document.getElementById('taskAddress').value = address;
+                        })
+                        .catch(() => {
+                            document.getElementById('taskAddress').value = 'Выбранное место на карте';
+                        });
+                }
+            });
         });
         
         // Загрузка статистики пользователя
         async function loadUserStats() {
+            if (!user) return;
+            
             // Загрузка выполненных заданий
             const { data: tasksData } = await supabase
                 .from('tasks')
