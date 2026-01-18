@@ -2300,145 +2300,67 @@
         }
 
         // ===================== РАБОТА С ЗАКАЗАМИ =====================
-        window.takeOrder = async function(orderId) {
-            showLoading();
-            
-            try {
-                const { data: order, error } = await supabaseClient
-                    .from('orders')
-                    .update({
-                        status: 'active',
-                        master_id: state.user.id,
-                        accepted_at: new Date().toISOString()
-                    })
-                    .eq('id', orderId)
-                    .eq('status', 'new')
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                showToast('Заказ принят в работу!');
-                await loadOrders();
-                closeInfo();
-                
-            } catch (error) {
-                console.error('Error taking order:', error);
-                showToast('Ошибка принятия заказа: ' + error.message);
-            }
-            
-            hideLoading();
-        };
+window.takeOrder = async function(orderId) {
+    showLoading();
+    
+    try {
+        // Проверяем, авторизован ли пользователь
+        if (!state.user || !state.user.id) throw new Error("Пользователь не авторизован");
 
-        window.completeOrder = async function(orderId) {
-            showLoading();
-            
-            try {
-                const { data: order, error } = await supabaseClient
-                    .from('orders')
-                    .update({
-                        status: 'completed',
-                        completed_at: new Date().toISOString()
-                    })
-                    .eq('id', orderId)
-                    .eq('master_id', state.user.id)
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                showToast('Заказ завершен!');
-                await loadOrders();
-                closeInfo();
-                
-            } catch (error) {
-                console.error('Error completing order:', error);
-                showToast('Ошибка завершения заказа: ' + error.message);
-            }
-            
-            hideLoading();
-        };
+        const { data: order, error } = await supabaseClient
+            .from('orders')
+            .update({
+                status: 'active',
+                master_id: state.user.id, // Убедитесь, что в SQL создана эта колонка
+                accepted_at: new Date().toISOString()
+            })
+            .eq('id', orderId)
+            // Убираем жесткую привязку к 'new', чтобы избежать конфликта 'open'/'new'
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        showToast('Заказ принят в работу!');
+        if (typeof loadOrders === 'function') await loadOrders();
+        closeInfo();
+        
+    } catch (error) {
+        console.error('Error taking order:', error);
+        showToast('Ошибка принятия заказа: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
 
-        window.viewOrderDetails = function(orderId) {
-            const order = state.orders.find(o => o.id === orderId);
-            if (!order) return;
-            
-            state.selectedOrder = order;
-            
-            document.getElementById('infoTitle').textContent = order.title || 'Заказ';
-            
-            const content = document.getElementById('infoContent');
-            content.innerHTML = `
-                <div style="margin-bottom: 20px;">
-                    <div style="font-size: 28px; font-weight: bold; color: var(--success); margin-bottom: 10px;">
-                        ${order.price || 0} ₽
-                    </div>
-                    <div style="color: #64748B; margin-bottom: 5px;">
-                        <i class="fas fa-map-marker-alt"></i> ${order.address || 'Адрес не указан'}
-                    </div>
-                    <div style="color: #64748B;">
-                        <i class="fas fa-clock"></i> ${new Date(order.created_at || Date.now()).toLocaleString()}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <div style="font-weight: 600; margin-bottom: 5px;">Описание:</div>
-                    <div>${order.description || 'Нет описания'}</div>
-                </div>
-                
-                ${state.role === 'customer' ? `
-                <div style="margin-bottom: 20px;">
-                    <div style="font-weight: 600; margin-bottom: 5px;">Статус:</div>
-                    <div class="status-badge ${order.status === 'new' ? 'status-new' : order.status === 'active' ? 'status-active' : 'status-completed'}">
-                        ${order.status === 'new' ? 'Новый' : order.status === 'active' ? 'В работе' : 'Завершен'}
-                    </div>
-                </div>
-                ` : ''}
-            `;
-            
-            const actions = document.getElementById('infoActions');
-            actions.innerHTML = '';
-            
-            if (state.role === 'master' && order.status === 'new') {
-                actions.innerHTML = `
-                    <button class="btn btn-outline" onclick="closeInfo()">Отмена</button>
-                    <button class="btn btn-success" onclick="takeOrder('${order.id}')">
-                        <i class="fas fa-check"></i> Взять заказ
-                    </button>
-                `;
-            } else if (state.role === 'master' && order.status === 'active' && order.master_id === state.user.id) {
-                actions.innerHTML = `
-                    <button class="btn btn-outline" onclick="openChat('${order.id}')">
-                        <i class="fas fa-comments"></i> Чат
-                    </button>
-                    <button class="btn btn-success" onclick="completeOrder('${order.id}')">
-                        <i class="fas fa-check-circle"></i> Завершить
-                    </button>
-                `;
-            } else if (state.role === 'customer' && (order.status === 'active' || order.status === 'new')) {
-                actions.innerHTML = `
-                    <button class="btn btn-outline" onclick="openChat('${order.id}')">
-                        <i class="fas fa-comments"></i> Чат
-                    </button>
-                    <button class="btn btn-primary" onclick="closeInfo()">Закрыть</button>
-                `;
-            } else {
-                actions.innerHTML = `
-                    <button class="btn btn-primary" onclick="closeInfo()" style="width: 100%;">Закрыть</button>
-                `;
-            }
-            
-            document.getElementById('mapInfo').style.display = 'block';
-            
-            if (order.lat && order.lng) {
-                state.map.setView([order.lat, order.lng], 16);
-            }
-        };
-
-        window.closeInfo = function() {
-            document.getElementById('mapInfo').style.display = 'none';
-            state.selectedOrder = null;
-        };
+window.completeOrder = async function(orderId) {
+    showLoading();
+    
+    try {
+        const { data: order, error } = await supabaseClient
+            .from('orders')
+            .update({
+                status: 'completed',
+                completed_at: new Date().toISOString()
+            })
+            .eq('id', orderId)
+            .eq('master_id', state.user.id)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        showToast('Заказ завершен!');
+        if (typeof loadOrders === 'function') await loadOrders();
+        closeInfo();
+        
+    } catch (error) {
+        console.error('Error completing order:', error);
+        showToast('Ошибка завершения заказа: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+};
 
         // ===================== ЧАТ =====================
         window.openChat = function(orderId) {
@@ -2779,4 +2701,5 @@ async function saveOrderToDatabase() {
     </script>
 </body>
 </html>
+
 
