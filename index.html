@@ -2611,7 +2611,44 @@
             
             state.subscriptions.push(messagesSubscription);
         }
+// Функция сохранения заказа (вставьте её в ваш основной <script>)
+async function saveOrderToDatabase() {
+    const title = document.getElementById('orderTitle').value;
+    const desc = document.getElementById('orderDesc').value;
+    const price = document.getElementById('orderPrice').value;
+    
+    // Берем координаты из состояния (убедитесь, что они там есть)
+    if (!state.lastClickedCoords) {
+        showToast("Выберите место на карте", "warning");
+        return;
+    }
 
+    const { data: { user } } = await sb.auth.getUser();
+
+    const orderPayload = {
+        title: title,
+        description: desc,
+        price: parseFloat(price) || 0,
+        lat: state.lastClickedCoords.lat, // Ключ совпадает с колонкой в БД
+        lng: state.lastClickedCoords.lng, // Ключ совпадает с колонкой в БД
+        customer_id: user.id
+    };
+
+    console.log("Отправка данных:", orderPayload); // Для отладки в консоли
+
+    const { data, error } = await sb
+        .from('orders')
+        .insert([orderPayload]);
+
+    if (error) {
+        console.error("Ошибка вставки:", error);
+        showToast("Ошибка базы: " + error.message, "danger");
+    } else {
+        showToast("Заказ сохранен!", "success");
+        closeOrderModal();
+        loadOrders(); // Обновить маркеры
+    }
+}
         // ===================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====================
         window.toggleSidePanel = function() {
             const panel = document.getElementById('sidePanel');
@@ -2742,3 +2779,4 @@
     </script>
 </body>
 </html>
+
